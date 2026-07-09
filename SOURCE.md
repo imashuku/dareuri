@@ -1,0 +1,1288 @@
+# ポチマエ — Full Source Dump (for AI review)
+
+Generated from https://github.com/imashuku/pochimae at commit e6c8910.
+
+## `README.md`
+
+```md
+# ポチマエ
+
+**ポチる前に、販売元を3秒チェック。**
+
+Amazonで見落としがちな「販売元」を、購入前に確認するためのWebアプリです。日経新聞の報道（偽装USBメモリの流通・出品審査の課題）を受けて、生活者が販売元情報を自分で確認する行動を支援するために作られました。
+
+## 何をするツールか
+
+1. Amazon上での「販売元情報の見方」を手順ガイドとして案内する
+2. ユーザーが貼り付けた販売元情報テキストを整理・構造化する
+3. 販売元の透明性・商品カテゴリ注意度を3段階の確認レベルで判定する（🔴 要確認／🟡 追加確認／🟢 目立つ懸念なし）
+4. AI講評文（3〜4文）を生成する（`ANTHROPIC_API_KEY` 設定時のみ。未設定でもルール判定は動作）
+
+本ツールは購入前の確認ポイントを整理するものであり、商品の真贋・品質・性能・販売者の信用度を断定するものではありません。
+
+## プライバシー設計
+
+- **商品URLはサーバーに送信しません。** URLはブラウザ内でのみカテゴリ推定に使います
+- **電話番号は扱いません。** 貼り付けテキスト内の電話番号らしき文字列は、送信前にブラウザ内で `[PHONE_REDACTED]` にマスクされます（サーバー側でも二重に検出・破棄）
+- **Claude APIには匿名化した特徴量のみを渡します。** 個人名・住所・URL・セラーID・電話番号は送信しません
+- **判定結果は保存しません。** ステートレスで動作し、DBを持ちません
+
+## セットアップ
+
+```bash
+npm install
+npm run dev   # http://localhost:3007
+```
+
+環境変数（`.env.local`）:
+
+| 変数 | 必須 | 説明 |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | 任意 | AI講評の生成に使用。未設定の場合はルール判定のみ |
+| `CLAUDE_MODEL` | 任意 | 既定は `claude-haiku-4-5` |
+
+## 構成
+
+```
+app/page.tsx                  1ページ完結のUI
+app/api/check/route.ts        POST /api/check（URLは受け取らない）
+lib/categoryGuess.ts          クライアント側カテゴリ推定
+lib/parseSellerText.ts        貼り付けテキストの構造化・電話番号マスク
+lib/rules.ts                  透明性×カテゴリ注意度のルール判定
+lib/critique.ts               Claude APIによるAI講評（匿名化payload）
+lib/types.ts                  型定義
+components/                   Hero / ManualGuide / SellerTextForm / ResultCard / Disclaimer
+```
+
+## 既知の制約（MVP）
+
+- `/api/check` のレート制限はサーバーレスインスタンス単位の簡易実装（10回/分/IP）。厳密な制限が必要になったら Upstash 等の外部ストアに移行する
+- 判定結果はキャッシュしないため、同一テキストの再チェックごとにAI講評のAPIコストが発生する
+
+## Phase 2 候補（MVPでは未実装）
+
+- Amazonページの自動取得
+- ブックマークレット
+- Chrome拡張
+- iOS共有シート
+- 注意カテゴリDB
+- 公式API / Creators APIで取得できる範囲の再調査
+- 判定結果キャッシュ
+- 問い合わせフォーム
+```
+
+## `package.json`
+
+```json
+{
+  "name": "pochimae",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3007",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.110.0",
+    "next": "16.2.10",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.10",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
+```
+
+## `app/layout.tsx`
+
+```tsx
+import type { Metadata } from "next";
+import { Noto_Sans_JP, Shippori_Mincho } from "next/font/google";
+import "./globals.css";
+
+const notoSansJP = Noto_Sans_JP({
+  weight: ["400", "500", "700"],
+  variable: "--font-noto-sans-jp",
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+});
+
+const shipporiMincho = Shippori_Mincho({
+  weight: ["500", "700"],
+  variable: "--font-shippori-mincho",
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+});
+
+export const metadata: Metadata = {
+  title: "ポチマエ｜ポチる前に、販売元を3秒チェック。",
+  description:
+    "Amazonで見落としがちな「販売元」を、購入前に確認するためのツールです。販売元情報を貼り付けるだけで、購入前の確認ポイントを整理します。",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html
+      lang="ja"
+      className={`${notoSansJP.variable} ${shipporiMincho.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col">{children}</body>
+    </html>
+  );
+}
+```
+
+## `app/page.tsx`
+
+```tsx
+"use client";
+
+import { useRef, useState } from "react";
+import Hero from "@/components/Hero";
+import ManualGuide from "@/components/ManualGuide";
+import SellerTextForm from "@/components/SellerTextForm";
+import ResultCard from "@/components/ResultCard";
+import { guessCategoryFromUrl } from "@/lib/categoryGuess";
+import { redactPhoneLike } from "@/lib/parseSellerText";
+import type { CategoryRisk, CheckRequest, CheckResult } from "@/lib/types";
+
+export default function Home() {
+  const [url, setUrl] = useState("");
+  const [showGuide, setShowGuide] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<CheckResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const guideRef = useRef<HTMLDivElement>(null);
+  const resultRef = useRef<HTMLDivElement>(null);
+
+  // The product URL stays in the browser — used only to guess the category.
+  const categoryRisk: CategoryRisk = url ? guessCategoryFromUrl(url) : null;
+
+  async function runCheck(body: CheckRequest) {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        throw new Error(`check_failed_${res.status}`);
+      }
+      setResult((await res.json()) as CheckResult);
+      requestAnimationFrame(() =>
+        resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      );
+    } catch {
+      setError(
+        "チェックに失敗しました。時間をおいてもう一度お試しください。",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleCheck(sellerText: string) {
+    // Phone-like strings are masked in the browser before anything is sent.
+    const { text, found } = redactPhoneLike(sellerText);
+    void runCheck({
+      sellerText: text,
+      categoryRisk,
+      hasPhoneLikeInfoFromClient: found,
+    });
+  }
+
+  function handleAmazonDirect() {
+    void runCheck({ soldByAmazon: true, categoryRisk });
+  }
+
+  return (
+    <div className="flex flex-col flex-1">
+      <main className="flex-1 w-full">
+        <Hero
+          url={url}
+          onUrlChange={setUrl}
+          onShowGuide={() => {
+            setShowGuide(true);
+            requestAnimationFrame(() =>
+              guideRef.current?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              }),
+            );
+          }}
+        />
+
+        {showGuide && (
+          <div ref={guideRef}>
+            <ManualGuide categoryRisk={categoryRisk} />
+          </div>
+        )}
+
+        <SellerTextForm
+          loading={loading}
+          onCheck={handleCheck}
+          onAmazonDirect={handleAmazonDirect}
+        />
+
+        {error && (
+          <p className="px-5 max-w-xl mx-auto text-sm text-level-high-fg mb-8">
+            {error}
+          </p>
+        )}
+
+        {result && (
+          <div ref={resultRef}>
+            <ResultCard result={result} />
+          </div>
+        )}
+      </main>
+
+      <footer className="bg-surface-dark text-on-dark-soft px-5 py-8">
+        <div className="max-w-xl mx-auto space-y-3">
+          <p className="font-display text-on-dark">ポチマエ</p>
+          <p className="text-xs leading-relaxed">
+            本ツールは、Amazon上に表示される販売元情報を整理し、購入前の確認ポイントを示すものです。商品の真贋、品質、性能、販売者の信用度を断定するものではありません。最終的な購入判断は、販売元情報、レビュー、返品条件、Amazon上の表示内容を確認したうえで行ってください。
+          </p>
+          <p className="text-xs">
+            © {new Date().getFullYear()} ステップアウトマーケティング合同会社
+          </p>
+        </div>
+      </footer>
+    </div>
+  );
+}
+```
+
+## `app/globals.css`
+
+```css
+@import "tailwindcss";
+
+:root {
+  /* Claude Design tokens (~/.claude/design/claude/DESIGN.md) */
+  --canvas: #faf9f5;
+  --surface-soft: #f5f0e8;
+  --surface-card: #efe9de;
+  --surface-dark: #181715;
+  --ink: #141413;
+  --body: #3d3d3a;
+  --muted: #6c6a64;
+  --hairline: #e6dfd8;
+  --primary: #cc785c;
+  --primary-active: #a9583e;
+  --on-primary: #ffffff;
+  --on-dark: #faf9f5;
+  --on-dark-soft: #a09d96;
+
+  /* 確認レベル用の3色トークン（淡色bg + 濃色fgでコントラスト確保） */
+  --level-high-bg: #fbe9e7;
+  --level-high-fg: #8f2b22;
+  --level-high-border: #c64545;
+  --level-medium-bg: #faf3da;
+  --level-medium-fg: #6f540a;
+  --level-medium-border: #d4a017;
+  --level-low-bg: #e7f3e9;
+  --level-low-fg: #285f36;
+  --level-low-border: #5db872;
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface-soft: var(--surface-soft);
+  --color-surface-card: var(--surface-card);
+  --color-surface-dark: var(--surface-dark);
+  --color-ink: var(--ink);
+  --color-body: var(--body);
+  --color-muted: var(--muted);
+  --color-hairline: var(--hairline);
+  --color-primary: var(--primary);
+  --color-primary-active: var(--primary-active);
+  --color-on-primary: var(--on-primary);
+  --color-on-dark: var(--on-dark);
+  --color-on-dark-soft: var(--on-dark-soft);
+  --color-level-high-bg: var(--level-high-bg);
+  --color-level-high-fg: var(--level-high-fg);
+  --color-level-high-border: var(--level-high-border);
+  --color-level-medium-bg: var(--level-medium-bg);
+  --color-level-medium-fg: var(--level-medium-fg);
+  --color-level-medium-border: var(--level-medium-border);
+  --color-level-low-bg: var(--level-low-bg);
+  --color-level-low-fg: var(--level-low-fg);
+  --color-level-low-border: var(--level-low-border);
+  --font-sans: var(--font-noto-sans-jp), "Hiragino Kaku Gothic ProN", sans-serif;
+  --font-display: var(--font-shippori-mincho), "Hiragino Mincho ProN", serif;
+}
+
+body {
+  background: var(--canvas);
+  color: var(--body);
+  font-family: var(--font-sans);
+}
+
+/* 日本語見出しは意味単位で折る */
+h1,
+h2,
+h3 {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  line-break: strict;
+}
+```
+
+## `app/api/check/route.ts`
+
+```ts
+import { NextResponse } from 'next/server';
+import { parseSellerText } from '@/lib/parseSellerText';
+import { evaluate } from '@/lib/rules';
+import { generateCritique } from '@/lib/critique';
+import type { CheckRequest, CheckResult } from '@/lib/types';
+
+const MAX_TEXT_LENGTH = 10_000;
+
+// Best-effort per-instance rate limit to bound Claude API cost.
+// Serverless instances each keep their own window, which is acceptable
+// for an MVP; see README for the known limitation.
+const RATE_LIMIT = 10;
+const RATE_WINDOW_MS = 60_000;
+const hits = new Map<string, number[]>();
+
+function rateLimited(ip: string): boolean {
+  const now = Date.now();
+  const recent = (hits.get(ip) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
+  if (recent.length >= RATE_LIMIT) {
+    hits.set(ip, recent);
+    return true;
+  }
+  recent.push(now);
+  hits.set(ip, recent);
+  if (hits.size > 10_000) hits.clear();
+  return false;
+}
+
+// Receives only pasted seller text (phone-redacted on the client) and
+// client-derived hints. Product URLs are never accepted here, and this
+// route never fetches anything from Amazon.
+export async function POST(request: Request) {
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'local';
+  if (rateLimited(ip)) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+  }
+
+  let body: CheckRequest;
+  try {
+    const parsed: unknown = await request.json();
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return NextResponse.json({ error: 'invalid_json' }, { status: 400 });
+    }
+    body = parsed as CheckRequest;
+  } catch {
+    return NextResponse.json({ error: 'invalid_json' }, { status: 400 });
+  }
+
+  const sellerText = typeof body.sellerText === 'string' ? body.sellerText : '';
+  // Trust the one-tap "sold by Amazon" flag only when no text was pasted;
+  // pasted text always speaks for itself (parse detects Amazon direct too).
+  const soldByAmazon = body.soldByAmazon === true && sellerText.trim().length === 0;
+
+  if (!sellerText.trim() && !soldByAmazon) {
+    return NextResponse.json({ error: 'empty_input' }, { status: 400 });
+  }
+  if (sellerText.length > MAX_TEXT_LENGTH) {
+    return NextResponse.json({ error: 'text_too_long' }, { status: 400 });
+  }
+
+  const categoryRisk =
+    body.categoryRisk === 'storage_media' || body.categoryRisk === 'charger_battery'
+      ? body.categoryRisk
+      : null;
+
+  const parsed = parseSellerText(sellerText, {
+    soldByAmazon,
+    categoryRisk,
+    hasPhoneLikeInfoFromClient: body.hasPhoneLikeInfoFromClient === true,
+  });
+
+  const result: CheckResult = evaluate(parsed);
+
+  // AI critique is best-effort: any failure (no API key, timeout, error)
+  // falls back to the rule-based result alone.
+  try {
+    result.critique = await generateCritique(parsed, result);
+  } catch {
+    result.critique = undefined;
+  }
+
+  return NextResponse.json(result);
+}
+```
+
+## `lib/types.ts`
+
+```ts
+export type Signal = 'high' | 'medium' | 'low';
+export type CountryGuess = 'JP' | 'CN' | 'other' | 'unknown';
+export type Presence = 'present' | 'not_found' | 'unknown';
+export type CategoryRisk = 'storage_media' | 'charger_battery' | null;
+export type NameScript = 'ja' | 'latin' | 'unknown';
+export type NameLanguage = 'ja' | 'latin' | 'mixed' | 'unknown';
+
+export interface CheckRequest {
+  // sellerText is phone-redacted on the client before it is sent
+  sellerText?: string;
+  soldByAmazon?: boolean;
+  categoryRisk?: CategoryRisk;
+  hasPhoneLikeInfoFromClient?: boolean;
+}
+
+// Structured result of the pasted text. Server-side only; raw values
+// (operatorName, address) are never sent to the Claude API.
+export interface ParsedSellerInfo {
+  storeName?: string;
+  operatorName?: string;
+  address?: string;
+  countryGuess: CountryGuess;
+  ratingCount?: number;
+  ratingPercent?: number;
+  hasSellerInfo: boolean;
+  hasTokushohoLikeInfo: Presence;
+  hasPhoneLikeInfo: Presence;
+  soldByAmazon: boolean;
+  shipsFromAmazon: boolean;
+  storeNameLanguage?: NameLanguage;
+  operatorNameScript?: NameScript;
+  categoryRisk?: CategoryRisk;
+}
+
+export interface Flag {
+  id: string;
+  score: number;
+  label: string;
+  description: string;
+}
+
+export interface CheckResult {
+  signal: Signal;
+  flags: Flag[];
+  facts: {
+    storeName?: string;
+    shipsFrom?: string;
+    country?: string;
+    operatorNameScript?: string;
+    hasTokushoho: Presence;
+    hasPhoneLikeInfo: Presence;
+  };
+  critique?: string;
+}
+
+// Anonymized feature vector for the Claude API. No personal names,
+// addresses, URLs, seller IDs, or phone numbers.
+export interface CritiquePayload {
+  sellerCountry: CountryGuess;
+  storeNameLanguage: NameLanguage;
+  operatorNameScript: NameScript;
+  hasSellerInfo: boolean;
+  hasTokushohoLikeInfo: boolean;
+  shipsFromAmazon: boolean;
+  soldByAmazon: boolean;
+  categoryRisk: CategoryRisk;
+  signal: Signal;
+  flags: string[];
+}
+```
+
+## `lib/parseSellerText.ts`
+
+```ts
+import type {
+  CategoryRisk,
+  CountryGuess,
+  NameLanguage,
+  NameScript,
+  ParsedSellerInfo,
+  Presence,
+} from './types';
+
+export const PHONE_REDACTED = '[PHONE_REDACTED]';
+
+// Sequences of 9+ digits with phone-style separators (or a leading +/0).
+// Postal codes (7 digits in JP, 6 in CN) stay below the digit threshold.
+const PHONE_LIKE = /(?:\+?\d{1,4}[-‐−ー–—.()（）\s]?){3,}\d{2,}/g;
+
+// Replace phone-like strings so the raw number is never stored, displayed,
+// logged, or sent to the Claude API. Returns whether anything was redacted.
+export function redactPhoneLike(text: string): { text: string; found: boolean } {
+  let found = false;
+  const redacted = text.replace(PHONE_LIKE, (match) => {
+    const digits = match.replace(/\D/g, '');
+    if (digits.length < 9 || digits.length > 15) return match;
+    found = true;
+    return PHONE_REDACTED;
+  });
+  return { text: redacted, found };
+}
+
+const JP_PREF =
+  /(東京都|北海道|(?:京都|大阪)府|(?:青森|岩手|宮城|秋田|山形|福島|茨城|栃木|群馬|埼玉|千葉|神奈川|新潟|富山|石川|福井|山梨|長野|岐阜|静岡|愛知|三重|滋賀|兵庫|奈良|和歌山|鳥取|島根|岡山|広島|山口|徳島|香川|愛媛|高知|福岡|佐賀|長崎|熊本|大分|宮崎|鹿児島|沖縄)県)/;
+
+const CN_HINT =
+  /(\bCN\b|中国|China|中華人民共和国|[省市县鎮镇村]|(?:北京|上海|広東|广东|深圳|浙江|江蘇|江苏|福建|江西|湖南|湖北|河南|河北|山東|山东|広西|广西|安徽|四川|重慶|重庆|遼寧|辽宁|吉林|雲南|云南|貴州|贵州|陕西|山西|甘粛|甘肃|香港))/;
+
+const OTHER_COUNTRY_HINT =
+  /(\b(?:US|USA|UK|GB|KR|TW|HK|SG|VN|TH|MY|PH|ID|IN|DE|FR|IT|ES|AU|CA)\b|United States|Korea|Taiwan|Vietnam|Thailand|Singapore)/;
+
+const HAS_JA_CHARS = /[぀-ヿ一-鿿ｦ-ﾟ]/;
+const LATIN_ONLY = /^[A-Za-z0-9 .,'&\-]+$/;
+
+function guessCountry(address: string | undefined, fullText: string): CountryGuess {
+  const target = address || fullText;
+  if (JP_PREF.test(target)) return 'JP';
+  if (CN_HINT.test(target)) return 'CN';
+  if (OTHER_COUNTRY_HINT.test(target)) return 'other';
+  return 'unknown';
+}
+
+function nameLanguage(name: string | undefined): NameLanguage {
+  if (!name) return 'unknown';
+  const trimmed = name.trim();
+  if (!trimmed) return 'unknown';
+  const hasJa = HAS_JA_CHARS.test(trimmed);
+  const hasLatin = /[A-Za-z]/.test(trimmed);
+  if (hasJa && hasLatin) return 'mixed';
+  if (hasJa) return 'ja';
+  if (LATIN_ONLY.test(trimmed)) return 'latin';
+  return 'unknown';
+}
+
+function nameScript(name: string | undefined): NameScript {
+  if (!name) return 'unknown';
+  const trimmed = name.trim();
+  if (!trimmed) return 'unknown';
+  if (HAS_JA_CHARS.test(trimmed)) return 'ja';
+  if (LATIN_ONLY.test(trimmed)) return 'latin';
+  return 'unknown';
+}
+
+function extractLabeled(text: string, label: RegExp): string | undefined {
+  const match = text.match(label);
+  const value = match?.[1]?.trim();
+  return value && value.length > 0 ? value.slice(0, 120) : undefined;
+}
+
+// Address on the seller profile page spans multiple lines between the
+// 住所 label and the next labeled row.
+function extractAddress(text: string): string | undefined {
+  const match = text.match(
+    /住所[:：]?\s*([\s\S]{0,300}?)(?=(?:運営責任者|店舗名|正式名称|お問い合わせ|電話|購入者|評価|特定商取引|$))/,
+  );
+  const value = match?.[1]?.replace(/\s+/g, ' ').trim();
+  return value && value.length > 1 ? value.slice(0, 200) : undefined;
+}
+
+const CATEGORY_KEYWORDS: Array<{ pattern: RegExp; risk: CategoryRisk }> = [
+  {
+    pattern: /(USB\s?メモリ|USBフラッシュ|フラッシュドライブ|SDカード|microSD|マイクロSD|TFカード|外付けSSD|flash\s?drive)/i,
+    risk: 'storage_media',
+  },
+  {
+    pattern: /(充電器|チャージャー|モバイルバッテリー|ACアダプタ|電源アダプタ|バッテリー|charger|power\s?bank)/i,
+    risk: 'charger_battery',
+  },
+];
+
+export function guessCategoryFromText(text: string): CategoryRisk {
+  for (const { pattern, risk } of CATEGORY_KEYWORDS) {
+    if (pattern.test(text)) return risk;
+  }
+  return null;
+}
+
+export function parseSellerText(
+  rawText: string,
+  options: {
+    soldByAmazon?: boolean;
+    categoryRisk?: CategoryRisk;
+    hasPhoneLikeInfoFromClient?: boolean;
+  } = {},
+): ParsedSellerInfo {
+  // Defense in depth: redact again server-side even though the client
+  // already replaced phone-like strings before sending.
+  const { text, found: phoneFoundServer } = redactPhoneLike(rawText);
+
+  const storeName = extractLabeled(text, /店舗名[:：]?\s*(.+)/);
+  const operatorName = extractLabeled(text, /運営責任者名?[:：]?\s*(.+)/);
+  const businessName = extractLabeled(text, /正式名称[:：]?\s*(.+)/);
+  const address = extractAddress(text);
+
+  const soldByAmazon =
+    options.soldByAmazon === true ||
+    /販売元[:：]?\s*Amazon(\.co\.jp|Japan)/i.test(text) ||
+    /Amazon\.co\.jp\s*が販売/.test(text);
+
+  const shipsFromAmazon =
+    /出荷元[:：]?\s*Amazon/i.test(text) || /Amazon\s*(が|から)?\s*(出荷|発送)/.test(text);
+
+  const hasSellerInfo = Boolean(storeName || operatorName || businessName || address);
+
+  let hasTokushohoLikeInfo: Presence;
+  if (/特定商取引法|特商法/.test(text) || (operatorName && address)) {
+    hasTokushohoLikeInfo = 'present';
+  } else if (hasSellerInfo) {
+    // Some seller info was pasted but the statutory block is incomplete
+    hasTokushohoLikeInfo = 'not_found';
+  } else {
+    hasTokushohoLikeInfo = 'unknown';
+  }
+
+  const phoneMentioned =
+    text.includes(PHONE_REDACTED) ||
+    phoneFoundServer ||
+    options.hasPhoneLikeInfoFromClient === true;
+  let hasPhoneLikeInfo: Presence;
+  if (phoneMentioned) {
+    hasPhoneLikeInfo = 'present';
+  } else if (hasSellerInfo) {
+    hasPhoneLikeInfo = 'not_found';
+  } else {
+    hasPhoneLikeInfo = 'unknown';
+  }
+
+  // Seller rating, e.g. 「過去12か月間で90%が肯定的」「評価: (1,234件)」
+  const percentMatch = text.match(/(\d{1,3})\s*[%％]\s*が?\s*(?:肯定的|高評価)/);
+  const countMatch = text.match(/[(（]?\s*([\d,]{1,10})\s*件?\s*の?評価/);
+  const ratingPercent = percentMatch ? Number(percentMatch[1]) : undefined;
+  const ratingCount = countMatch
+    ? Number(countMatch[1].replace(/,/g, ''))
+    : undefined;
+
+  return {
+    storeName: storeName ?? businessName,
+    operatorName,
+    address,
+    countryGuess: guessCountry(address, text),
+    ratingCount: Number.isFinite(ratingCount) ? ratingCount : undefined,
+    ratingPercent: Number.isFinite(ratingPercent) ? ratingPercent : undefined,
+    hasSellerInfo,
+    hasTokushohoLikeInfo,
+    hasPhoneLikeInfo,
+    soldByAmazon,
+    shipsFromAmazon,
+    storeNameLanguage: nameLanguage(storeName ?? businessName),
+    operatorNameScript: nameScript(operatorName),
+    categoryRisk: options.categoryRisk ?? guessCategoryFromText(text),
+  };
+}
+```
+
+## `lib/rules.ts`
+
+```ts
+import type { CheckResult, Flag, ParsedSellerInfo, Signal } from './types';
+
+// Scoring flags. Wording stays factual: the tool points out things to
+// confirm before purchase and never asserts authenticity or quality.
+const FLAG_DEFS = {
+  insufficient_seller_info: {
+    score: 3,
+    label: '事業者情報が十分に確認できません',
+    description:
+      '貼り付けられたテキストから、店舗名・運営責任者・所在地などの事業者情報を読み取れませんでした。販売元プロフィールの「特定商取引法に基づく表記」を開いて、もう一度確認してみてください。',
+  },
+  no_tokushoho_like_info: {
+    score: 3,
+    label: '特定商取引法に相当する表示が見当たりません',
+    description:
+      '販売者情報としての確認材料が少ない状態です。事業者名・所在地・責任者名がそろっているかを、販売元プロフィールで確認することをおすすめします。',
+  },
+  seller_country_not_japan: {
+    score: 1,
+    label: '所在地が日本国外です',
+    description:
+      '海外セラーであること自体は問題ではありませんが、返品や問い合わせの際の窓口・条件を購入前に確認しておくと確実です。',
+  },
+  japanese_store_name_but_overseas_operator: {
+    score: 2,
+    label: '店舗名は日本語ですが、責任者名・所在地は海外です',
+    description:
+      '日本国内の事業者と誤認しやすい組み合わせです。どの国のどんな事業者が販売しているのかを、購入前にもう一度確認してみてください。',
+  },
+  fba_third_party: {
+    score: 1,
+    label: '出荷元はAmazonですが、販売元はサードパーティです',
+    description:
+      'Amazonの倉庫から届く商品でも、販売しているのはAmazon以外の事業者です。Amazon直販と混同しないよう、販売元の表示を確認してください。',
+  },
+  high_risk_category: {
+    score: 1,
+    label: '購入前の確認をおすすめするカテゴリの商品です',
+    description:
+      'USBメモリ・SDカード・充電器・バッテリーなどは、不具合があったときの損失が大きいカテゴリです。容量・規格・レビューを念入りに確認することをおすすめします。',
+  },
+  sold_by_amazon: {
+    score: -3,
+    label: '販売元はAmazon.co.jp（直販）です',
+    description:
+      'Amazon自身が販売する商品のため、販売元に関する目立つ懸念は相対的に少ないと考えられます。',
+  },
+  good_seller_rating: {
+    score: -1,
+    label: '店舗評価が十分に多く、高評価です',
+    description:
+      '一定件数以上の購入者評価があり、高い割合で肯定的に評価されています。',
+  },
+} as const;
+
+type FlagId = keyof typeof FLAG_DEFS;
+
+function makeFlag(id: FlagId): Flag {
+  const def = FLAG_DEFS[id];
+  return { id, score: def.score, label: def.label, description: def.description };
+}
+
+export function evaluate(parsed: ParsedSellerInfo): CheckResult {
+  const flags: Flag[] = [];
+
+  if (parsed.soldByAmazon) {
+    flags.push(makeFlag('sold_by_amazon'));
+  } else {
+    if (!parsed.hasSellerInfo) {
+      flags.push(makeFlag('insufficient_seller_info'));
+    }
+    if (parsed.hasTokushohoLikeInfo !== 'present') {
+      flags.push(makeFlag('no_tokushoho_like_info'));
+    }
+    if (parsed.countryGuess === 'CN' || parsed.countryGuess === 'other') {
+      flags.push(makeFlag('seller_country_not_japan'));
+    }
+    if (
+      parsed.storeNameLanguage === 'ja' &&
+      (parsed.operatorNameScript === 'latin' ||
+        parsed.countryGuess === 'CN' ||
+        parsed.countryGuess === 'other')
+    ) {
+      flags.push(makeFlag('japanese_store_name_but_overseas_operator'));
+    }
+    if (parsed.shipsFromAmazon) {
+      flags.push(makeFlag('fba_third_party'));
+    }
+    if (
+      parsed.ratingCount !== undefined &&
+      parsed.ratingPercent !== undefined &&
+      parsed.ratingCount >= 100 &&
+      parsed.ratingPercent >= 90
+    ) {
+      flags.push(makeFlag('good_seller_rating'));
+    }
+  }
+
+  if (parsed.categoryRisk) {
+    flags.push(makeFlag('high_risk_category'));
+  }
+
+  const score = flags.reduce((sum, flag) => sum + flag.score, 0);
+  const signal: Signal = score >= 4 ? 'high' : score >= 2 ? 'medium' : 'low';
+
+  return {
+    signal,
+    flags,
+    facts: {
+      storeName: parsed.soldByAmazon ? 'Amazon.co.jp' : parsed.storeName,
+      shipsFrom: parsed.shipsFromAmazon
+        ? 'Amazon'
+        : parsed.soldByAmazon
+          ? 'Amazon'
+          : undefined,
+      country: parsed.soldByAmazon ? '日本' : countryLabel(parsed.countryGuess),
+      operatorNameScript: scriptLabel(parsed.operatorNameScript),
+      hasTokushoho: parsed.soldByAmazon ? 'present' : parsed.hasTokushohoLikeInfo,
+      hasPhoneLikeInfo: parsed.hasPhoneLikeInfo,
+    },
+  };
+}
+
+function countryLabel(guess: ParsedSellerInfo['countryGuess']): string | undefined {
+  switch (guess) {
+    case 'JP':
+      return '日本';
+    case 'CN':
+      return '中国';
+    case 'other':
+      return '日本国外';
+    default:
+      return undefined;
+  }
+}
+
+function scriptLabel(
+  script: ParsedSellerInfo['operatorNameScript'],
+): string | undefined {
+  switch (script) {
+    case 'ja':
+      return '日本語表記';
+    case 'latin':
+      return 'ローマ字表記';
+    default:
+      return undefined;
+  }
+}
+```
+
+## `lib/critique.ts`
+
+```ts
+import Anthropic from '@anthropic-ai/sdk';
+import type { CheckResult, CritiquePayload, ParsedSellerInfo } from './types';
+
+const CLAUDE_MODEL = process.env.CLAUDE_MODEL ?? 'claude-haiku-4-5';
+const TIMEOUT_MS = 5_000;
+
+const SYSTEM_PROMPT = `あなたは「ポチマエ」というAmazon販売元チェックツールの講評担当です。
+入力として、販売元情報から抽出した特徴量（JSON）を受け取ります。生活者向けの講評文を生成してください。
+
+制約:
+- 3〜4文。生活者向けの平易な日本語。
+- 次の語を絶対に使わない: 偽物、詐欺、危険、安全、黒、悪質、本物保証、STOP
+- 真贋・品質・信用度を断定しない。販売者を非難しない。
+- あくまで「購入前の確認材料」の提示に徹する。
+- 最後は、返品条件・レビュー・販売元情報の再確認を促す一文で締める。
+- 講評文のみを出力する。前置きや見出しは不要。`;
+
+// Only anonymized features are sent — no personal names, addresses, URLs,
+// seller IDs, or phone numbers. Presence values are converted to booleans.
+export function buildCritiquePayload(
+  parsed: ParsedSellerInfo,
+  result: CheckResult,
+): CritiquePayload {
+  return {
+    sellerCountry: parsed.countryGuess,
+    storeNameLanguage: parsed.storeNameLanguage ?? 'unknown',
+    operatorNameScript: parsed.operatorNameScript ?? 'unknown',
+    hasSellerInfo: parsed.hasSellerInfo,
+    hasTokushohoLikeInfo: parsed.hasTokushohoLikeInfo === 'present',
+    shipsFromAmazon: parsed.shipsFromAmazon,
+    soldByAmazon: parsed.soldByAmazon,
+    categoryRisk: parsed.categoryRisk ?? null,
+    signal: result.signal,
+    flags: result.flags.map((flag) => flag.id),
+  };
+}
+
+export async function generateCritique(
+  parsed: ParsedSellerInfo,
+  result: CheckResult,
+): Promise<string | undefined> {
+  if (!process.env.ANTHROPIC_API_KEY) return undefined;
+
+  const client = new Anthropic({ timeout: TIMEOUT_MS, maxRetries: 0 });
+  const payload = buildCritiquePayload(parsed, result);
+
+  const response = await client.messages.create({
+    model: CLAUDE_MODEL,
+    max_tokens: 400,
+    system: SYSTEM_PROMPT,
+    messages: [{ role: 'user', content: JSON.stringify(payload) }],
+  });
+
+  const text = response.content
+    .filter((block) => block.type === 'text')
+    .map((block) => block.text)
+    .join('')
+    .trim();
+
+  return text.length > 0 ? text : undefined;
+}
+```
+
+## `lib/categoryGuess.ts`
+
+```ts
+import { guessCategoryFromText } from './parseSellerText';
+import type { CategoryRisk } from './types';
+
+// Client-side only: the product URL never leaves the browser.
+// We decode the URL slug (Amazon product URLs embed the product name)
+// and match category keywords locally.
+export function guessCategoryFromUrl(url: string): CategoryRisk {
+  try {
+    const decoded = decodeURIComponent(url);
+    return guessCategoryFromText(decoded);
+  } catch {
+    return guessCategoryFromText(url);
+  }
+}
+
+export function isAmazonUrl(url: string): boolean {
+  try {
+    const { hostname } = new URL(url.startsWith('http') ? url : `https://${url}`);
+    return /(^|\.)(amazon\.(co\.jp|com)|amzn\.(asia|to))$/.test(hostname);
+  } catch {
+    return false;
+  }
+}
+```
+
+## `components/Hero.tsx`
+
+```tsx
+"use client";
+
+import { isAmazonUrl } from "@/lib/categoryGuess";
+
+type Props = {
+  url: string;
+  onUrlChange: (url: string) => void;
+  onShowGuide: () => void;
+};
+
+export default function Hero({ url, onUrlChange, onShowGuide }: Props) {
+  return (
+    <section className="pt-14 pb-10 px-5 text-center">
+      <p className="text-xs font-bold tracking-[0.2em] text-primary-active mb-3">
+        AMAZON 販売元チェック
+      </p>
+      <h1 className="font-display text-4xl sm:text-5xl text-ink mb-4">
+        ポチマエ
+      </h1>
+      <p className="font-display text-xl sm:text-2xl text-ink mb-3">
+        <span className="inline-block">ポチる前に、</span>
+        <span className="inline-block">販売元を3秒チェック。</span>
+      </p>
+      <p className="text-sm text-muted max-w-md mx-auto leading-relaxed mb-8">
+        <span className="inline-block">Amazonで見落としがちな「販売元」を、</span>
+        <span className="inline-block">購入前に確認するためのツールです。</span>
+      </p>
+
+      <div className="max-w-xl mx-auto">
+        <h2 className="font-display text-lg text-ink mb-3">
+          <span className="inline-block">その商品、</span>
+          <span className="inline-block">ダレが売ってる？</span>
+        </h2>
+        <form
+          className="flex flex-col sm:flex-row gap-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            onShowGuide();
+          }}
+        >
+          <input
+            type="url"
+            inputMode="url"
+            value={url}
+            onChange={(e) => onUrlChange(e.target.value)}
+            placeholder="Amazonの商品URLを貼り付け（任意）"
+            aria-label="Amazonの商品URL"
+            className="flex-1 h-11 px-4 rounded-lg border border-hairline bg-white text-ink text-sm placeholder:text-muted/70 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+          />
+          <button
+            type="submit"
+            className="h-11 px-6 rounded-lg bg-primary text-on-primary text-sm font-medium hover:bg-primary-active transition-colors"
+          >
+            確認手順を見る
+          </button>
+        </form>
+        <p className="text-xs text-muted/80 mt-2">
+          <span className="inline-block">URLはブラウザ内でのみ使い、</span>
+          <span className="inline-block">サーバーには送信しません。</span>
+        </p>
+        {url.trim().length > 0 && !isAmazonUrl(url) && (
+          <p className="text-xs text-level-medium-fg mt-1">
+            AmazonのURLではないようです。URLがなくても、そのまま確認手順は使えます。
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+```
+
+## `components/ManualGuide.tsx`
+
+```tsx
+import type { CategoryRisk } from "@/lib/types";
+
+const STEPS = [
+  {
+    title: "商品ページの「販売元」を見る",
+    detail:
+      "購入ボタンの近くに小さく表示されています。「販売元 Amazon.co.jp」なら直販です。",
+  },
+  {
+    title: "「出荷元」も確認する",
+    detail:
+      "出荷元がAmazonでも、販売しているのは別の事業者のことがあります。2つはセットで見ます。",
+  },
+  {
+    title: "販売元名のリンクをタップ",
+    detail: "販売元の名前はリンクになっています。タップすると店舗情報が開きます。",
+  },
+  {
+    title: "販売元プロフィールを開く",
+    detail: "店舗の評価や「詳細情報」が表示されるページです。",
+  },
+  {
+    title: "「特定商取引法に基づく表記」を見る",
+    detail:
+      "事業者の正式名称・運営責任者・住所が載っています。この部分をコピーして、下の欄に貼り付けてください。",
+  },
+];
+
+const CATEGORY_NOTES: Record<Exclude<CategoryRisk, null>, string> = {
+  storage_media:
+    "USBメモリ・SDカードは、容量表示と実際の容量が異なる商品の報告が多いカテゴリです。販売元の確認を特におすすめします。",
+  charger_battery:
+    "充電器・バッテリーは、不具合があったときの影響が大きいカテゴリです。販売元の確認を特におすすめします。",
+};
+
+type Props = {
+  categoryRisk: CategoryRisk;
+};
+
+export default function ManualGuide({ categoryRisk }: Props) {
+  return (
+    <section className="px-5 mb-8">
+      <div className="max-w-xl mx-auto bg-surface-card rounded-xl p-6 sm:p-8">
+        <h2 className="font-display text-lg text-ink mb-1">
+          Amazonでの確認手順
+        </h2>
+        <p className="text-xs text-muted mb-5">
+          Amazonアプリ・ブラウザのどちらでも確認できます。
+        </p>
+        {categoryRisk && (
+          <p className="text-sm leading-relaxed bg-level-medium-bg text-level-medium-fg border border-level-medium-border/40 rounded-lg px-4 py-3 mb-5">
+            {CATEGORY_NOTES[categoryRisk]}
+          </p>
+        )}
+        <ol className="space-y-4">
+          {STEPS.map((step, i) => (
+            <li key={step.title} className="flex gap-3">
+              <span
+                aria-hidden
+                className="shrink-0 w-6 h-6 rounded-full bg-primary-active text-on-primary text-xs font-bold flex items-center justify-center mt-0.5"
+              >
+                {i + 1}
+              </span>
+              <div>
+                <p className="text-sm font-medium text-ink">{step.title}</p>
+                <p className="text-sm text-body leading-relaxed">{step.detail}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+  );
+}
+```
+
+## `components/SellerTextForm.tsx`
+
+```tsx
+"use client";
+
+import { useState } from "react";
+
+type Props = {
+  loading: boolean;
+  onCheck: (sellerText: string) => void;
+  onAmazonDirect: () => void;
+};
+
+export default function SellerTextForm({ loading, onCheck, onAmazonDirect }: Props) {
+  const [text, setText] = useState("");
+
+  return (
+    <section className="px-5 mb-10">
+      <div className="max-w-xl mx-auto">
+        <label htmlFor="seller-text" className="block font-display text-lg text-ink mb-2">
+          販売元情報を貼り付けてください
+        </label>
+        <textarea
+          id="seller-text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={7}
+          placeholder="店舗名、運営責任者、所在地、評価情報などが含まれる部分を貼り付けてください"
+          className="w-full rounded-lg border border-hairline bg-white text-ink text-sm p-4 leading-relaxed placeholder:text-muted/70 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+        />
+        <div className="flex flex-col sm:flex-row gap-3 mt-3">
+          <button
+            type="button"
+            disabled={loading || text.trim().length === 0}
+            onClick={() => onCheck(text)}
+            className="h-11 px-6 rounded-lg bg-primary text-on-primary text-sm font-medium hover:bg-primary-active transition-colors disabled:bg-hairline disabled:text-muted"
+          >
+            {loading ? "チェック中…" : "この販売元情報をチェック"}
+          </button>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={onAmazonDirect}
+            className="h-11 px-6 rounded-lg bg-white border border-hairline text-ink text-sm font-medium hover:bg-surface-soft transition-colors disabled:text-muted"
+          >
+            販売元はAmazon.co.jpでした
+          </button>
+        </div>
+        <p className="text-xs text-muted/80 mt-2">
+          電話番号らしき文字列は、送信前にブラウザ内で自動的にマスクされます。
+        </p>
+      </div>
+    </section>
+  );
+}
+```
+
+## `components/ResultCard.tsx`
+
+```tsx
+import type { CheckResult, Presence, Signal } from "@/lib/types";
+import Disclaimer from "./Disclaimer";
+
+const SIGNAL_STYLES: Record<
+  Signal,
+  { emoji: string; label: string; note: string; className: string }
+> = {
+  high: {
+    emoji: "🔴",
+    label: "要確認",
+    note: "購入前に確認したい点が複数あります",
+    className:
+      "bg-level-high-bg text-level-high-fg border-level-high-border",
+  },
+  medium: {
+    emoji: "🟡",
+    label: "追加確認",
+    note: "購入前にもう一歩の確認をおすすめします",
+    className:
+      "bg-level-medium-bg text-level-medium-fg border-level-medium-border",
+  },
+  low: {
+    emoji: "🟢",
+    label: "目立つ懸念なし",
+    note: "販売元情報からは目立つ懸念は見つかりませんでした",
+    className: "bg-level-low-bg text-level-low-fg border-level-low-border",
+  },
+};
+
+function presenceLabel(value: Presence): string {
+  switch (value) {
+    case "present":
+      return "あり";
+    case "not_found":
+      return "見当たらない";
+    default:
+      return "不明";
+  }
+}
+
+type Props = {
+  result: CheckResult;
+};
+
+export default function ResultCard({ result }: Props) {
+  const signal = SIGNAL_STYLES[result.signal];
+  const facts: Array<[string, string]> = [
+    ["販売元名", result.facts.storeName ?? "不明"],
+    ["出荷元", result.facts.shipsFrom ?? "不明"],
+    ["所在国", result.facts.country ?? "不明"],
+    ["責任者名の表記", result.facts.operatorNameScript ?? "不明"],
+    ["特商法相当の表示", presenceLabel(result.facts.hasTokushoho)],
+    ["電話番号表示", presenceLabel(result.facts.hasPhoneLikeInfo)],
+  ];
+
+  return (
+    <section className="px-5 mb-10" aria-live="polite">
+      <div className="max-w-xl mx-auto bg-white border border-hairline rounded-xl p-6 sm:p-8">
+        <h2 className="font-display text-lg text-ink mb-4">販売元情報の整理結果</h2>
+
+        <div
+          className={`flex items-center gap-3 border rounded-xl px-5 py-4 mb-6 ${signal.className}`}
+        >
+          <span aria-hidden className="text-3xl leading-none">
+            {signal.emoji}
+          </span>
+          <div>
+            <p className="text-xl font-bold leading-tight">{signal.label}</p>
+            <p className="text-sm leading-snug mt-0.5">{signal.note}</p>
+          </div>
+        </div>
+
+        <h3 className="text-sm font-medium text-ink mb-2">わかったこと</h3>
+        <dl className="border border-hairline rounded-lg divide-y divide-hairline mb-6 text-sm">
+          {facts.map(([label, value]) => (
+            <div key={label} className="flex px-4 py-2.5 gap-3">
+              <dt className="w-36 shrink-0 text-muted">{label}</dt>
+              <dd className="text-ink break-words min-w-0">{value}</dd>
+            </div>
+          ))}
+        </dl>
+
+        {result.flags.length > 0 && (
+          <>
+            <h3 className="text-sm font-medium text-ink mb-2">確認ポイント</h3>
+            <ul className="space-y-3 mb-6">
+              {result.flags.map((flag) => (
+                <li
+                  key={flag.id}
+                  className="border border-hairline rounded-lg px-4 py-3"
+                >
+                  <p className="text-sm font-medium text-ink flex items-start gap-2">
+                    <span aria-hidden className="mt-0.5">
+                      {flag.score > 0 ? "☑️" : "🧾"}
+                    </span>
+                    {flag.label}
+                  </p>
+                  <p className="text-sm text-body leading-relaxed mt-1">
+                    {flag.description}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+
+        {result.critique && (
+          <>
+            <h3 className="text-sm font-medium text-ink mb-2">AIによる講評</h3>
+            <p className="text-sm text-body leading-relaxed bg-surface-soft rounded-lg px-4 py-3 mb-6">
+              {result.critique}
+            </p>
+          </>
+        )}
+
+        <Disclaimer />
+      </div>
+    </section>
+  );
+}
+```
+
+## `components/Disclaimer.tsx`
+
+```tsx
+export default function Disclaimer() {
+  return (
+    <p className="text-xs text-muted leading-relaxed border-t border-hairline pt-4">
+      本ツールは、Amazon上に表示される販売元情報を整理し、購入前の確認ポイントを示すものです。商品の真贋、品質、性能、販売者の信用度を断定するものではありません。最終的な購入判断は、販売元情報、レビュー、返品条件、Amazon上の表示内容を確認したうえで行ってください。
+    </p>
+  );
+}
+```
+
