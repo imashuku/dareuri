@@ -3,6 +3,36 @@ import type { CheckResult, CritiquePayload, ParsedSellerInfo } from './types';
 
 const CLAUDE_MODEL = process.env.CLAUDE_MODEL ?? 'claude-haiku-4-5';
 const TIMEOUT_MS = 5_000;
+const MAX_CRITIQUE_LENGTH = 500;
+
+// Post-generation gate: the system prompt forbids these terms, but LLM
+// compliance is not guaranteed, so the output is checked mechanically too.
+const FORBIDDEN_TERMS = [
+  '偽物',
+  '詐欺',
+  '危険',
+  '安全',
+  '黒',
+  '悪質',
+  '本物保証',
+  'STOP',
+] as const;
+
+function containsForbiddenTerm(text: string): boolean {
+  return FORBIDDEN_TERMS.some((term) => text.includes(term));
+}
+
+// Returns the critique only if it passes every output check; otherwise
+// undefined, and the UI falls back to the rule-based result alone.
+export function sanitizeCritique(raw: string): string | undefined {
+  const text = raw.trim();
+  if (!text) return undefined;
+  if (text.length > MAX_CRITIQUE_LENGTH) return undefined;
+  if (containsForbiddenTerm(text)) return undefined;
+  if (text.includes('```')) return undefined;
+  if (text.startsWith('{') || text.startsWith('[')) return undefined;
+  return text;
+}
 
 const SYSTEM_PROMPT = `あなたは「ポチマエ」というAmazon販売元チェックツールの講評担当です。
 入力として、販売元情報から抽出した特徴量（JSON）を受け取ります。生活者向けの講評文を生成してください。
@@ -54,8 +84,7 @@ export async function generateCritique(
   const text = response.content
     .filter((block) => block.type === 'text')
     .map((block) => block.text)
-    .join('')
-    .trim();
+    .join('');
 
-  return text.length > 0 ? text : undefined;
+  return sanitizeCritique(text);
 }

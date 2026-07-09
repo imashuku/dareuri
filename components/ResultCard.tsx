@@ -47,10 +47,10 @@ export default function ResultCard({ result }: Props) {
   const facts: Array<[string, string]> = [
     ["販売元名", result.facts.storeName ?? "不明"],
     ["出荷元", result.facts.shipsFrom ?? "不明"],
-    ["所在国", result.facts.country ?? "不明"],
+    ["推定所在国", result.facts.country ?? "不明"],
     ["責任者名の表記", result.facts.operatorNameScript ?? "不明"],
-    ["特商法相当の表示", presenceLabel(result.facts.hasTokushoho)],
-    ["電話番号表示", presenceLabel(result.facts.hasPhoneLikeInfo)],
+    ["貼り付けテキスト内の事業者表示", presenceLabel(result.facts.hasTokushoho)],
+    ["貼り付けテキスト内の電話番号表示", presenceLabel(result.facts.hasPhoneLikeInfo)],
   ];
 
   return (
@@ -71,14 +71,17 @@ export default function ResultCard({ result }: Props) {
         </div>
 
         <h3 className="text-sm font-medium text-ink mb-2">わかったこと</h3>
-        <dl className="border border-hairline rounded-lg divide-y divide-hairline mb-6 text-sm">
+        <dl className="border border-hairline rounded-lg divide-y divide-hairline mb-2 text-sm">
           {facts.map(([label, value]) => (
             <div key={label} className="flex px-4 py-2.5 gap-3">
-              <dt className="w-36 shrink-0 text-muted">{label}</dt>
+              <dt className="w-40 shrink-0 text-muted">{label}</dt>
               <dd className="text-ink break-words min-w-0">{value}</dd>
             </div>
           ))}
         </dl>
+        <p className="text-xs text-muted mb-6">
+          表示内容は、貼り付けられたテキストから機械的に整理・推定した結果です。
+        </p>
 
         {result.flags.length > 0 && (
           <>

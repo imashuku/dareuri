@@ -21,11 +21,17 @@ const FLAG_DEFS = {
     description:
       '海外セラーであること自体は問題ではありませんが、返品や問い合わせの際の窓口・条件を購入前に確認しておくと確実です。',
   },
-  japanese_store_name_but_overseas_operator: {
-    score: 2,
-    label: '店舗名は日本語ですが、責任者名・所在地は海外です',
+  japanese_store_name_with_latin_operator: {
+    score: 1,
+    label: '店舗名は日本語ですが、責任者名はローマ字表記です',
     description:
-      '日本国内の事業者と誤認しやすい組み合わせです。どの国のどんな事業者が販売しているのかを、購入前にもう一度確認してみてください。',
+      '店舗名と事業者情報の表記に違いがあります。所在地や正式な事業者名をあわせて確認してください。',
+  },
+  japanese_store_name_with_overseas_address: {
+    score: 2,
+    label: '店舗名は日本語ですが、所在地は日本国外です',
+    description:
+      '日本語の店舗名でも、販売事業者の所在地が日本国外の場合があります。返品条件や問い合わせ先を購入前に確認してください。',
   },
   fba_third_party: {
     score: 1,
@@ -77,11 +83,15 @@ export function evaluate(parsed: ParsedSellerInfo): CheckResult {
     }
     if (
       parsed.storeNameLanguage === 'ja' &&
-      (parsed.operatorNameScript === 'latin' ||
-        parsed.countryGuess === 'CN' ||
-        parsed.countryGuess === 'other')
+      parsed.operatorNameScript === 'latin'
     ) {
-      flags.push(makeFlag('japanese_store_name_but_overseas_operator'));
+      flags.push(makeFlag('japanese_store_name_with_latin_operator'));
+    }
+    if (
+      parsed.storeNameLanguage === 'ja' &&
+      (parsed.countryGuess === 'CN' || parsed.countryGuess === 'other')
+    ) {
+      flags.push(makeFlag('japanese_store_name_with_overseas_address'));
     }
     if (parsed.shipsFromAmazon) {
       flags.push(makeFlag('fba_third_party'));

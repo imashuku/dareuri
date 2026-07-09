@@ -29,8 +29,15 @@ export function redactPhoneLike(text: string): { text: string; found: boolean } 
 const JP_PREF =
   /(東京都|北海道|(?:京都|大阪)府|(?:青森|岩手|宮城|秋田|山形|福島|茨城|栃木|群馬|埼玉|千葉|神奈川|新潟|富山|石川|福井|山梨|長野|岐阜|静岡|愛知|三重|滋賀|兵庫|奈良|和歌山|鳥取|島根|岡山|広島|山口|徳島|香川|愛媛|高知|福岡|佐賀|長崎|熊本|大分|宮崎|鹿児島|沖縄)県)/;
 
+// 「日本語対応」「日本語可」のような接客文言は国の証拠にしない
+const JP_EXPLICIT = /(\bJP\b|\bJapan\b|日本(?!語))/i;
+
+// Standalone 市/村 must never count as a China signal — Japanese addresses
+// use them too (横浜市, 〇〇村). Only explicit country markers, Chinese
+// province-level names, and simplified-only division characters (县/镇,
+// which do not appear in Japanese addresses) qualify.
 const CN_HINT =
-  /(\bCN\b|中国|China|中華人民共和国|[省市县鎮镇村]|(?:北京|上海|広東|广东|深圳|浙江|江蘇|江苏|福建|江西|湖南|湖北|河南|河北|山東|山东|広西|广西|安徽|四川|重慶|重庆|遼寧|辽宁|吉林|雲南|云南|貴州|贵州|陕西|山西|甘粛|甘肃|香港))/;
+  /(\bCN\b|中国|China|中華人民共和国|[县镇]|(?:江西|広東|广东|浙江|江蘇|江苏|福建|湖南|湖北|河南|河北|山東|山东|広西|广西|安徽|四川|遼寧|辽宁|雲南|云南|貴州|贵州|陝西|陕西|甘粛|甘肃|黒竜江|黑龙江|海南|青海|吉林|山西)省|重慶市|重庆市|北京市|上海市|天津市|深圳|香港)/i;
 
 const OTHER_COUNTRY_HINT =
   /(\b(?:US|USA|UK|GB|KR|TW|HK|SG|VN|TH|MY|PH|ID|IN|DE|FR|IT|ES|AU|CA)\b|United States|Korea|Taiwan|Vietnam|Thailand|Singapore)/;
@@ -38,10 +45,19 @@ const OTHER_COUNTRY_HINT =
 const HAS_JA_CHARS = /[぀-ヿ一-鿿ｦ-ﾟ]/;
 const LATIN_ONLY = /^[A-Za-z0-9 .,'&\-]+$/;
 
-function guessCountry(address: string | undefined, fullText: string): CountryGuess {
+// Priority order: JP prefecture → CN → explicit JP → other → unknown.
+// A prefecture is unambiguous, so it wins outright. A loose "日本" mention
+// (e.g. 「日本国内配送」 appended by an overseas seller) must NOT override
+// concrete CN evidence, so CN is checked before JP_EXPLICIT. When in doubt,
+// prefer 'unknown' over misclassifying an address.
+export function guessCountry(
+  address: string | undefined,
+  fullText: string,
+): CountryGuess {
   const target = address || fullText;
   if (JP_PREF.test(target)) return 'JP';
   if (CN_HINT.test(target)) return 'CN';
+  if (JP_EXPLICIT.test(target)) return 'JP';
   if (OTHER_COUNTRY_HINT.test(target)) return 'other';
   return 'unknown';
 }

@@ -1,6 +1,6 @@
 # ポチマエ — Full Source Dump (for AI review)
 
-Generated from https://github.com/imashuku/pochimae at commit e6c8910.
+Generated from https://github.com/imashuku/pochimae.
 
 ## `README.md`
 
@@ -82,7 +82,8 @@ components/                   Hero / ManualGuide / SellerTextForm / ResultCard /
     "dev": "next dev -p 3007",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
@@ -98,9 +99,27 @@ components/                   Hero / ManualGuide / SellerTextForm / ResultCard /
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }
+```
+
+## `vitest.config.ts`
+
+```ts
+import path from 'node:path';
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  resolve: {
+    alias: { '@': path.resolve(__dirname) },
+  },
+  test: {
+    environment: 'node',
+    include: ['**/__tests__/**/*.test.{ts,tsx}'],
+  },
+});
 ```
 
 ## `app/layout.tsx`
@@ -543,8 +562,15 @@ export function redactPhoneLike(text: string): { text: string; found: boolean } 
 const JP_PREF =
   /(東京都|北海道|(?:京都|大阪)府|(?:青森|岩手|宮城|秋田|山形|福島|茨城|栃木|群馬|埼玉|千葉|神奈川|新潟|富山|石川|福井|山梨|長野|岐阜|静岡|愛知|三重|滋賀|兵庫|奈良|和歌山|鳥取|島根|岡山|広島|山口|徳島|香川|愛媛|高知|福岡|佐賀|長崎|熊本|大分|宮崎|鹿児島|沖縄)県)/;
 
+// 「日本語対応」「日本語可」のような接客文言は国の証拠にしない
+const JP_EXPLICIT = /(\bJP\b|\bJapan\b|日本(?!語))/i;
+
+// Standalone 市/村 must never count as a China signal — Japanese addresses
+// use them too (横浜市, 〇〇村). Only explicit country markers, Chinese
+// province-level names, and simplified-only division characters (县/镇,
+// which do not appear in Japanese addresses) qualify.
 const CN_HINT =
-  /(\bCN\b|中国|China|中華人民共和国|[省市县鎮镇村]|(?:北京|上海|広東|广东|深圳|浙江|江蘇|江苏|福建|江西|湖南|湖北|河南|河北|山東|山东|広西|广西|安徽|四川|重慶|重庆|遼寧|辽宁|吉林|雲南|云南|貴州|贵州|陕西|山西|甘粛|甘肃|香港))/;
+  /(\bCN\b|中国|China|中華人民共和国|[县镇]|(?:江西|広東|广东|浙江|江蘇|江苏|福建|湖南|湖北|河南|河北|山東|山东|広西|广西|安徽|四川|遼寧|辽宁|雲南|云南|貴州|贵州|陝西|陕西|甘粛|甘肃|黒竜江|黑龙江|海南|青海|吉林|山西)省|重慶市|重庆市|北京市|上海市|天津市|深圳|香港)/i;
 
 const OTHER_COUNTRY_HINT =
   /(\b(?:US|USA|UK|GB|KR|TW|HK|SG|VN|TH|MY|PH|ID|IN|DE|FR|IT|ES|AU|CA)\b|United States|Korea|Taiwan|Vietnam|Thailand|Singapore)/;
@@ -552,10 +578,19 @@ const OTHER_COUNTRY_HINT =
 const HAS_JA_CHARS = /[぀-ヿ一-鿿ｦ-ﾟ]/;
 const LATIN_ONLY = /^[A-Za-z0-9 .,'&\-]+$/;
 
-function guessCountry(address: string | undefined, fullText: string): CountryGuess {
+// Priority order: JP prefecture → CN → explicit JP → other → unknown.
+// A prefecture is unambiguous, so it wins outright. A loose "日本" mention
+// (e.g. 「日本国内配送」 appended by an overseas seller) must NOT override
+// concrete CN evidence, so CN is checked before JP_EXPLICIT. When in doubt,
+// prefer 'unknown' over misclassifying an address.
+export function guessCountry(
+  address: string | undefined,
+  fullText: string,
+): CountryGuess {
   const target = address || fullText;
   if (JP_PREF.test(target)) return 'JP';
   if (CN_HINT.test(target)) return 'CN';
+  if (JP_EXPLICIT.test(target)) return 'JP';
   if (OTHER_COUNTRY_HINT.test(target)) return 'other';
   return 'unknown';
 }
@@ -718,11 +753,17 @@ const FLAG_DEFS = {
     description:
       '海外セラーであること自体は問題ではありませんが、返品や問い合わせの際の窓口・条件を購入前に確認しておくと確実です。',
   },
-  japanese_store_name_but_overseas_operator: {
-    score: 2,
-    label: '店舗名は日本語ですが、責任者名・所在地は海外です',
+  japanese_store_name_with_latin_operator: {
+    score: 1,
+    label: '店舗名は日本語ですが、責任者名はローマ字表記です',
     description:
-      '日本国内の事業者と誤認しやすい組み合わせです。どの国のどんな事業者が販売しているのかを、購入前にもう一度確認してみてください。',
+      '店舗名と事業者情報の表記に違いがあります。所在地や正式な事業者名をあわせて確認してください。',
+  },
+  japanese_store_name_with_overseas_address: {
+    score: 2,
+    label: '店舗名は日本語ですが、所在地は日本国外です',
+    description:
+      '日本語の店舗名でも、販売事業者の所在地が日本国外の場合があります。返品条件や問い合わせ先を購入前に確認してください。',
   },
   fba_third_party: {
     score: 1,
@@ -774,11 +815,15 @@ export function evaluate(parsed: ParsedSellerInfo): CheckResult {
     }
     if (
       parsed.storeNameLanguage === 'ja' &&
-      (parsed.operatorNameScript === 'latin' ||
-        parsed.countryGuess === 'CN' ||
-        parsed.countryGuess === 'other')
+      parsed.operatorNameScript === 'latin'
     ) {
-      flags.push(makeFlag('japanese_store_name_but_overseas_operator'));
+      flags.push(makeFlag('japanese_store_name_with_latin_operator'));
+    }
+    if (
+      parsed.storeNameLanguage === 'ja' &&
+      (parsed.countryGuess === 'CN' || parsed.countryGuess === 'other')
+    ) {
+      flags.push(makeFlag('japanese_store_name_with_overseas_address'));
     }
     if (parsed.shipsFromAmazon) {
       flags.push(makeFlag('fba_third_party'));
@@ -853,6 +898,36 @@ import type { CheckResult, CritiquePayload, ParsedSellerInfo } from './types';
 
 const CLAUDE_MODEL = process.env.CLAUDE_MODEL ?? 'claude-haiku-4-5';
 const TIMEOUT_MS = 5_000;
+const MAX_CRITIQUE_LENGTH = 500;
+
+// Post-generation gate: the system prompt forbids these terms, but LLM
+// compliance is not guaranteed, so the output is checked mechanically too.
+const FORBIDDEN_TERMS = [
+  '偽物',
+  '詐欺',
+  '危険',
+  '安全',
+  '黒',
+  '悪質',
+  '本物保証',
+  'STOP',
+] as const;
+
+function containsForbiddenTerm(text: string): boolean {
+  return FORBIDDEN_TERMS.some((term) => text.includes(term));
+}
+
+// Returns the critique only if it passes every output check; otherwise
+// undefined, and the UI falls back to the rule-based result alone.
+export function sanitizeCritique(raw: string): string | undefined {
+  const text = raw.trim();
+  if (!text) return undefined;
+  if (text.length > MAX_CRITIQUE_LENGTH) return undefined;
+  if (containsForbiddenTerm(text)) return undefined;
+  if (text.includes('```')) return undefined;
+  if (text.startsWith('{') || text.startsWith('[')) return undefined;
+  return text;
+}
 
 const SYSTEM_PROMPT = `あなたは「ポチマエ」というAmazon販売元チェックツールの講評担当です。
 入力として、販売元情報から抽出した特徴量（JSON）を受け取ります。生活者向けの講評文を生成してください。
@@ -904,10 +979,9 @@ export async function generateCritique(
   const text = response.content
     .filter((block) => block.type === 'text')
     .map((block) => block.text)
-    .join('')
-    .trim();
+    .join('');
 
-  return text.length > 0 ? text : undefined;
+  return sanitizeCritique(text);
 }
 ```
 
@@ -1201,10 +1275,10 @@ export default function ResultCard({ result }: Props) {
   const facts: Array<[string, string]> = [
     ["販売元名", result.facts.storeName ?? "不明"],
     ["出荷元", result.facts.shipsFrom ?? "不明"],
-    ["所在国", result.facts.country ?? "不明"],
+    ["推定所在国", result.facts.country ?? "不明"],
     ["責任者名の表記", result.facts.operatorNameScript ?? "不明"],
-    ["特商法相当の表示", presenceLabel(result.facts.hasTokushoho)],
-    ["電話番号表示", presenceLabel(result.facts.hasPhoneLikeInfo)],
+    ["貼り付けテキスト内の事業者表示", presenceLabel(result.facts.hasTokushoho)],
+    ["貼り付けテキスト内の電話番号表示", presenceLabel(result.facts.hasPhoneLikeInfo)],
   ];
 
   return (
@@ -1225,14 +1299,17 @@ export default function ResultCard({ result }: Props) {
         </div>
 
         <h3 className="text-sm font-medium text-ink mb-2">わかったこと</h3>
-        <dl className="border border-hairline rounded-lg divide-y divide-hairline mb-6 text-sm">
+        <dl className="border border-hairline rounded-lg divide-y divide-hairline mb-2 text-sm">
           {facts.map(([label, value]) => (
             <div key={label} className="flex px-4 py-2.5 gap-3">
-              <dt className="w-36 shrink-0 text-muted">{label}</dt>
+              <dt className="w-40 shrink-0 text-muted">{label}</dt>
               <dd className="text-ink break-words min-w-0">{value}</dd>
             </div>
           ))}
         </dl>
+        <p className="text-xs text-muted mb-6">
+          表示内容は、貼り付けられたテキストから機械的に整理・推定した結果です。
+        </p>
 
         {result.flags.length > 0 && (
           <>
@@ -1284,5 +1361,191 @@ export default function Disclaimer() {
     </p>
   );
 }
+```
+
+## `lib/__tests__/parseSellerText.test.ts`
+
+```ts
+import { describe, expect, it } from 'vitest';
+import { guessCountry, parseSellerText } from '../parseSellerText';
+
+describe('guessCountry', () => {
+  it('classifies Japanese prefectures as JP', () => {
+    expect(guessCountry('東京都港区', '')).toBe('JP');
+    expect(guessCountry('大阪府大阪市', '')).toBe('JP');
+    expect(guessCountry('滋賀県東近江市', '')).toBe('JP');
+  });
+
+  it('never classifies prefecture-less Japanese addresses as CN', () => {
+    // 市/村 alone must not be treated as a China signal
+    expect(['JP', 'unknown']).toContain(guessCountry('横浜市中区', ''));
+    expect(['JP', 'unknown']).toContain(guessCountry('東近江市八日市', ''));
+    expect(['JP', 'unknown']).toContain(guessCountry('八王子市', ''));
+    expect(['JP', 'unknown']).toContain(guessCountry('〇〇村〇〇番地', ''));
+  });
+
+  it('classifies explicit Chinese addresses as CN', () => {
+    expect(guessCountry('江西省吉安市', '')).toBe('CN');
+    expect(guessCountry('深圳市, 广东省, CN', '')).toBe('CN');
+    expect(guessCountry('吉水县八都镇', '')).toBe('CN');
+  });
+
+  it('classifies explicit JP markers as JP', () => {
+    expect(guessCountry('中央区銀座1-2-3 Japan', '')).toBe('JP');
+  });
+
+  it('does not let a loose 日本 mention override CN evidence', () => {
+    expect(
+      guessCountry('吉水县八都镇坛上自然村10号 吉安市 江西 331600 CN 日本語対応可能', ''),
+    ).toBe('CN');
+    expect(guessCountry('中国 広東省深圳市 日本国内配送', '')).toBe('CN');
+    // 「日本語」だけでは JP の証拠にならない
+    expect(guessCountry('日本語対応スタッフ在籍', '')).toBe('unknown');
+  });
+
+  it('falls back to unknown when nothing matches', () => {
+    expect(guessCountry('somewhere', '')).toBe('unknown');
+  });
+});
+
+describe('parseSellerText country integration', () => {
+  it('does not misclassify a Japanese seller as CN', () => {
+    const parsed = parseSellerText(
+      '店舗名: 東京デジタル\n住所: 横浜市中区1-2-3\n運営責任者名: John Smith',
+    );
+    expect(parsed.countryGuess).not.toBe('CN');
+  });
+});
+```
+
+## `lib/__tests__/rules.test.ts`
+
+```ts
+import { describe, expect, it } from 'vitest';
+import { parseSellerText } from '../parseSellerText';
+import { evaluate } from '../rules';
+
+function flagIds(text: string) {
+  const result = evaluate(parseSellerText(text));
+  return { ids: result.flags.map((f) => f.id), signal: result.signal };
+}
+
+describe('evaluate — split store-name flags', () => {
+  it('JA store name + latin operator + JP address: latin flag only, signal low', () => {
+    const { ids, signal } = flagIds(
+      '特定商取引法に基づく表記\n店舗名: 東京デジタル\n運営責任者名: John Smith\n住所: 東京都港区1-2-3',
+    );
+    expect(ids).toContain('japanese_store_name_with_latin_operator');
+    expect(ids).not.toContain('japanese_store_name_with_overseas_address');
+    expect(ids).not.toContain('seller_country_not_japan');
+    expect(signal).toBe('low');
+  });
+
+  it('JA store name + latin operator + CN address: both flags, signal high', () => {
+    const { ids, signal } = flagIds(
+      '特定商取引法に基づく表記\n店舗名: 毎日上向き\n運営責任者名: zhiping liu\n住所: 江西省吉安市',
+    );
+    expect(ids).toContain('japanese_store_name_with_latin_operator');
+    expect(ids).toContain('japanese_store_name_with_overseas_address');
+    expect(signal).toBe('high');
+  });
+
+  it('VASTDIGI-style full paste stays high', () => {
+    const { signal } = flagIds(
+      '出荷元 Amazon\n販売元 毎日上向き\n特定商取引法に基づく表記\n店舗名: 毎日上向き\n住所:\n吉水县\n八都镇坛上自然村10号\n吉安市\n江西\n331600\nCN\n運営責任者名: zhiping liu',
+    );
+    expect(signal).toBe('high');
+  });
+
+  it('removed legacy flag id is gone', () => {
+    const { ids } = flagIds(
+      '店舗名: 毎日上向き\n運営責任者名: zhiping liu\n住所: 江西省吉安市',
+    );
+    expect(ids).not.toContain('japanese_store_name_but_overseas_operator');
+  });
+});
+```
+
+## `lib/__tests__/critique.test.ts`
+
+```ts
+import { describe, expect, it } from 'vitest';
+import { sanitizeCritique } from '../critique';
+
+describe('sanitizeCritique', () => {
+  it('returns a normal short critique as-is', () => {
+    const text =
+      '販売元の所在地が日本国外のため、返品や問い合わせの窓口を購入前に確認しておくとよさそうです。店舗名と責任者名の表記にも違いがあります。レビューや返品条件、販売元情報をもう一度確認したうえで判断してください。';
+    expect(sanitizeCritique(text)).toBe(text);
+  });
+
+  it('rejects output containing forbidden terms', () => {
+    expect(sanitizeCritique('この商品は偽物の可能性があります。')).toBeUndefined();
+    expect(sanitizeCritique('この販売元は安全です。')).toBeUndefined();
+    expect(sanitizeCritique('購入はSTOPしてください。')).toBeUndefined();
+  });
+
+  it('rejects output longer than 500 characters', () => {
+    expect(sanitizeCritique('あ'.repeat(501))).toBeUndefined();
+  });
+
+  it('rejects empty output', () => {
+    expect(sanitizeCritique('')).toBeUndefined();
+    expect(sanitizeCritique('   ')).toBeUndefined();
+  });
+
+  it('rejects code blocks and JSON-looking output', () => {
+    expect(sanitizeCritique('```json\n{"a":1}\n```')).toBeUndefined();
+    expect(sanitizeCritique('{"signal":"high"}')).toBeUndefined();
+    expect(sanitizeCritique('[{"signal":"high"}]')).toBeUndefined();
+  });
+});
+```
+
+## `components/__tests__/ResultCard.test.tsx`
+
+```tsx
+import { describe, expect, it } from 'vitest';
+import { renderToStaticMarkup } from 'react-dom/server';
+import ResultCard from '../ResultCard';
+import type { CheckResult } from '@/lib/types';
+
+const result: CheckResult = {
+  signal: 'medium',
+  flags: [],
+  facts: {
+    storeName: '毎日上向き',
+    shipsFrom: 'Amazon',
+    country: '中国',
+    operatorNameScript: 'ローマ字表記',
+    hasTokushoho: 'present',
+    hasPhoneLikeInfo: 'not_found',
+  },
+};
+
+describe('ResultCard labels', () => {
+  const html = renderToStaticMarkup(<ResultCard result={result} />);
+
+  it('labels the country as an estimate', () => {
+    expect(html).toContain('推定所在国');
+    expect(html).not.toContain('>所在国<');
+  });
+
+  it('scopes business-info and phone labels to the pasted text', () => {
+    expect(html).toContain('貼り付けテキスト内の事業者表示');
+    expect(html).toContain('貼り付けテキスト内の電話番号表示');
+  });
+
+  it('shows the estimation note', () => {
+    expect(html).toContain(
+      '表示内容は、貼り付けられたテキストから機械的に整理・推定した結果です。',
+    );
+  });
+
+  it('maps Presence values to あり/見当たらない', () => {
+    expect(html).toContain('あり');
+    expect(html).toContain('見当たらない');
+  });
+});
 ```
 
