@@ -244,11 +244,9 @@ import type { CategoryRisk, CheckRequest, CheckResult } from "@/lib/types";
 
 export default function Home() {
   const [url, setUrl] = useState("");
-  const [showGuide, setShowGuide] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CheckResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const guideRef = useRef<HTMLDivElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
 
   // The product URL stays in the browser — used only to guess the category.
@@ -301,25 +299,7 @@ export default function Home() {
   return (
     <div className="flex flex-col flex-1">
       <main className="flex-1 w-full">
-        <Hero
-          url={url}
-          onUrlChange={setUrl}
-          onShowGuide={() => {
-            setShowGuide(true);
-            requestAnimationFrame(() =>
-              guideRef.current?.scrollIntoView({
-                behavior: scrollBehavior(),
-                block: "start",
-              }),
-            );
-          }}
-        />
-
-        {showGuide && (
-          <div ref={guideRef}>
-            <ManualGuide categoryRisk={categoryRisk} />
-          </div>
-        )}
+        <Hero />
 
         <SellerTextForm
           loading={loading}
@@ -330,6 +310,31 @@ export default function Home() {
             setError(null);
           }}
         />
+
+        <section className="px-5 mb-10">
+          <details className="max-w-xl mx-auto group">
+            <summary className="cursor-pointer list-none flex items-center gap-2 text-sm font-medium text-primary-active hover:text-ink transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-active rounded">
+              <svg
+                aria-hidden
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-4 h-4 transition-transform group-open:rotate-90"
+              >
+                <path d="M9 5l7 7-7 7" />
+              </svg>
+              販売元情報の見つけ方を見る
+            </summary>
+            <ManualGuide
+              url={url}
+              onUrlChange={setUrl}
+              categoryRisk={categoryRisk}
+            />
+          </details>
+        </section>
 
         {error && (
           <p className="px-5 max-w-xl mx-auto text-sm text-level-high-fg mb-8">
@@ -1097,19 +1102,9 @@ export function isAmazonUrl(url: string): boolean {
 ## `components/Hero.tsx`
 
 ```tsx
-"use client";
-
-import { isAmazonUrl } from "@/lib/categoryGuess";
-
-type Props = {
-  url: string;
-  onUrlChange: (url: string) => void;
-  onShowGuide: () => void;
-};
-
-export default function Hero({ url, onUrlChange, onShowGuide }: Props) {
+export default function Hero() {
   return (
-    <section className="pt-14 pb-10 px-5 text-center">
+    <section className="pt-14 pb-8 px-5 text-center">
       <p className="text-xs font-bold tracking-[0.2em] text-primary-active mb-3">
         AMAZON 販売元チェック
       </p>
@@ -1120,52 +1115,10 @@ export default function Hero({ url, onUrlChange, onShowGuide }: Props) {
         <span className="inline-block">ポチる前に、</span>
         <span className="inline-block">販売元を3秒チェック。</span>
       </p>
-      <p className="text-sm text-muted max-w-md mx-auto leading-relaxed mb-8">
+      <p className="text-sm text-muted max-w-md mx-auto leading-relaxed">
         <span className="inline-block">Amazonで見落としがちな「販売元」を、</span>
         <span className="inline-block">購入前に確認するためのツールです。</span>
       </p>
-
-      <div className="max-w-xl mx-auto">
-        <h2 className="font-display text-lg text-ink mb-3">
-          <span className="inline-block">その商品、</span>
-          <span className="inline-block">ダレが売ってる？</span>
-        </h2>
-        <form
-          className="flex flex-col sm:flex-row gap-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            onShowGuide();
-          }}
-        >
-          <input
-            type="text"
-            inputMode="url"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            value={url}
-            onChange={(e) => onUrlChange(e.target.value)}
-            placeholder="Amazonの商品URLを貼り付け（任意）"
-            aria-label="Amazonの商品URL"
-            className="flex-1 h-11 px-4 rounded-lg border border-hairline bg-white text-ink text-base placeholder:text-muted/70 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-          />
-          <button
-            type="submit"
-            className="h-11 px-6 rounded-lg bg-primary text-on-primary text-sm font-medium hover:bg-primary-active transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-active"
-          >
-            確認手順を見る
-          </button>
-        </form>
-        <p className="text-xs text-muted/80 mt-2">
-          <span className="inline-block">URLはブラウザ内でのみ使い、</span>
-          <span className="inline-block">サーバーには送信しません。</span>
-        </p>
-        {url.trim().length > 0 && !isAmazonUrl(url) && (
-          <p className="text-xs text-level-medium-fg mt-1">
-            AmazonのURLではないようです。URLがなくても、そのまま確認手順は使えます。
-          </p>
-        )}
-      </div>
     </section>
   );
 }
@@ -1174,6 +1127,9 @@ export default function Hero({ url, onUrlChange, onShowGuide }: Props) {
 ## `components/ManualGuide.tsx`
 
 ```tsx
+"use client";
+
+import { isAmazonUrl } from "@/lib/categoryGuess";
 import type { CategoryRisk } from "@/lib/types";
 
 const STEPS = [
@@ -1198,7 +1154,7 @@ const STEPS = [
   {
     title: "「特定商取引法に基づく表記」を見る",
     detail:
-      "事業者の正式名称・運営責任者・住所が載っています。この部分をコピーして、下の欄に貼り付けてください。",
+      "事業者の正式名称・運営責任者・住所が載っています。この部分をコピーして、上の欄に貼り付けてください。",
   },
 ];
 
@@ -1210,42 +1166,66 @@ const CATEGORY_NOTES: Record<Exclude<CategoryRisk, null>, string> = {
 };
 
 type Props = {
+  url: string;
+  onUrlChange: (url: string) => void;
   categoryRisk: CategoryRisk;
 };
 
-export default function ManualGuide({ categoryRisk }: Props) {
+export default function ManualGuide({ url, onUrlChange, categoryRisk }: Props) {
   return (
-    <section className="px-5 mb-8">
-      <div className="max-w-xl mx-auto bg-surface-card rounded-xl p-6 sm:p-8">
-        <h2 className="font-display text-lg text-ink mb-1">
-          Amazonでの確認手順
-        </h2>
-        <p className="text-xs text-muted mb-5">
-          Amazonアプリ・ブラウザのどちらでも確認できます。
+    <div className="bg-surface-card rounded-xl p-6 sm:p-8 mt-3">
+      <p className="text-xs text-muted mb-5">
+        Amazonアプリ・ブラウザのどちらでも確認できます。
+      </p>
+      <ol className="space-y-4 mb-6">
+        {STEPS.map((step, i) => (
+          <li key={step.title} className="flex gap-3">
+            <span
+              aria-hidden
+              className="shrink-0 w-6 h-6 rounded-full bg-primary-active text-on-primary text-xs font-bold flex items-center justify-center mt-0.5"
+            >
+              {i + 1}
+            </span>
+            <div>
+              <p className="text-sm font-medium text-ink">{step.title}</p>
+              <p className="text-sm text-body leading-relaxed">{step.detail}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+
+      <div className="border-t border-hairline pt-5">
+        <label htmlFor="product-url" className="block text-sm font-medium text-ink mb-2">
+          商品URL（任意）— 貼ると注意カテゴリをお知らせします
+        </label>
+        <input
+          id="product-url"
+          type="text"
+          inputMode="url"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          value={url}
+          onChange={(e) => onUrlChange(e.target.value)}
+          placeholder="https://www.amazon.co.jp/..."
+          className="w-full h-11 px-4 rounded-lg border border-hairline bg-white text-ink text-base placeholder:text-muted/70 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+        />
+        <p className="text-xs text-muted/80 mt-2">
+          <span className="inline-block">URLはブラウザ内でのみ使い、</span>
+          <span className="inline-block">サーバーには送信しません。</span>
         </p>
+        {url.trim().length > 0 && !isAmazonUrl(url) && (
+          <p className="text-xs text-level-medium-fg mt-1">
+            AmazonのURLではないようです。URLがなくても、そのまま確認手順は使えます。
+          </p>
+        )}
         {categoryRisk && (
-          <p className="text-sm leading-relaxed bg-level-medium-bg text-level-medium-fg border border-level-medium-border/40 rounded-lg px-4 py-3 mb-5">
+          <p className="text-sm leading-relaxed bg-level-medium-bg text-level-medium-fg border border-level-medium-border/40 rounded-lg px-4 py-3 mt-3">
             {CATEGORY_NOTES[categoryRisk]}
           </p>
         )}
-        <ol className="space-y-4">
-          {STEPS.map((step, i) => (
-            <li key={step.title} className="flex gap-3">
-              <span
-                aria-hidden
-                className="shrink-0 w-6 h-6 rounded-full bg-primary-active text-on-primary text-xs font-bold flex items-center justify-center mt-0.5"
-              >
-                {i + 1}
-              </span>
-              <div>
-                <p className="text-sm font-medium text-ink">{step.title}</p>
-                <p className="text-sm text-body leading-relaxed">{step.detail}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
       </div>
-    </section>
+    </div>
   );
 }
 ```
@@ -1273,10 +1253,14 @@ export default function SellerTextForm({
   const [text, setText] = useState("");
 
   return (
-    <section className="px-5 mb-10">
+    <section className="px-5 mb-6">
       <div className="max-w-xl mx-auto">
-        <label htmlFor="seller-text" className="block font-display text-lg text-ink mb-2">
-          販売元情報を貼り付けてください
+        <h2 className="font-display text-xl text-ink text-center mb-4">
+          <span className="inline-block">その商品、</span>
+          <span className="inline-block">ダレが売ってる？</span>
+        </h2>
+        <label htmlFor="seller-text" className="block text-sm font-medium text-ink mb-2">
+          Amazonの販売元情報を貼り付けてください
         </label>
         <textarea
           id="seller-text"
@@ -1688,17 +1672,17 @@ describe('ResultCard labels', () => {
 });
 ```
 
-## `components/__tests__/Hero.test.tsx`
+## `components/__tests__/ManualGuide.test.tsx`
 
 ```tsx
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import Hero from '../Hero';
+import ManualGuide from '../ManualGuide';
 import { isAmazonUrl } from '@/lib/categoryGuess';
 
-describe('Hero URL input', () => {
+describe('ManualGuide URL input', () => {
   const html = renderToStaticMarkup(
-    <Hero url="" onUrlChange={() => {}} onShowGuide={() => {}} />,
+    <ManualGuide url="" onUrlChange={() => {}} categoryRisk={null} />,
   );
 
   it('does not rely on browser URL validation (type="text")', () => {
@@ -1712,6 +1696,10 @@ describe('Hero URL input', () => {
     expect(html).toContain('inputMode="url"');
     expect(html).toContain('autoCapitalize="none"');
     expect(html).toContain('spellCheck="false"');
+  });
+
+  it('tells the direct-sale case it is done without the tool', () => {
+    expect(html).toContain('このツールでのチェックは不要です');
   });
 });
 

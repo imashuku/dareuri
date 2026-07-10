@@ -1,3 +1,6 @@
+"use client";
+
+import { isAmazonUrl } from "@/lib/categoryGuess";
 import type { CategoryRisk } from "@/lib/types";
 
 const STEPS = [
@@ -22,7 +25,7 @@ const STEPS = [
   {
     title: "「特定商取引法に基づく表記」を見る",
     detail:
-      "事業者の正式名称・運営責任者・住所が載っています。この部分をコピーして、下の欄に貼り付けてください。",
+      "事業者の正式名称・運営責任者・住所が載っています。この部分をコピーして、上の欄に貼り付けてください。",
   },
 ];
 
@@ -34,41 +37,65 @@ const CATEGORY_NOTES: Record<Exclude<CategoryRisk, null>, string> = {
 };
 
 type Props = {
+  url: string;
+  onUrlChange: (url: string) => void;
   categoryRisk: CategoryRisk;
 };
 
-export default function ManualGuide({ categoryRisk }: Props) {
+export default function ManualGuide({ url, onUrlChange, categoryRisk }: Props) {
   return (
-    <section className="px-5 mb-8">
-      <div className="max-w-xl mx-auto bg-surface-card rounded-xl p-6 sm:p-8">
-        <h2 className="font-display text-lg text-ink mb-1">
-          Amazonでの確認手順
-        </h2>
-        <p className="text-xs text-muted mb-5">
-          Amazonアプリ・ブラウザのどちらでも確認できます。
+    <div className="bg-surface-card rounded-xl p-6 sm:p-8 mt-3">
+      <p className="text-xs text-muted mb-5">
+        Amazonアプリ・ブラウザのどちらでも確認できます。
+      </p>
+      <ol className="space-y-4 mb-6">
+        {STEPS.map((step, i) => (
+          <li key={step.title} className="flex gap-3">
+            <span
+              aria-hidden
+              className="shrink-0 w-6 h-6 rounded-full bg-primary-active text-on-primary text-xs font-bold flex items-center justify-center mt-0.5"
+            >
+              {i + 1}
+            </span>
+            <div>
+              <p className="text-sm font-medium text-ink">{step.title}</p>
+              <p className="text-sm text-body leading-relaxed">{step.detail}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+
+      <div className="border-t border-hairline pt-5">
+        <label htmlFor="product-url" className="block text-sm font-medium text-ink mb-2">
+          商品URL（任意）— 貼ると注意カテゴリをお知らせします
+        </label>
+        <input
+          id="product-url"
+          type="text"
+          inputMode="url"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          value={url}
+          onChange={(e) => onUrlChange(e.target.value)}
+          placeholder="https://www.amazon.co.jp/..."
+          className="w-full h-11 px-4 rounded-lg border border-hairline bg-white text-ink text-base placeholder:text-muted/70 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+        />
+        <p className="text-xs text-muted/80 mt-2">
+          <span className="inline-block">URLはブラウザ内でのみ使い、</span>
+          <span className="inline-block">サーバーには送信しません。</span>
         </p>
+        {url.trim().length > 0 && !isAmazonUrl(url) && (
+          <p className="text-xs text-level-medium-fg mt-1">
+            AmazonのURLではないようです。URLがなくても、そのまま確認手順は使えます。
+          </p>
+        )}
         {categoryRisk && (
-          <p className="text-sm leading-relaxed bg-level-medium-bg text-level-medium-fg border border-level-medium-border/40 rounded-lg px-4 py-3 mb-5">
+          <p className="text-sm leading-relaxed bg-level-medium-bg text-level-medium-fg border border-level-medium-border/40 rounded-lg px-4 py-3 mt-3">
             {CATEGORY_NOTES[categoryRisk]}
           </p>
         )}
-        <ol className="space-y-4">
-          {STEPS.map((step, i) => (
-            <li key={step.title} className="flex gap-3">
-              <span
-                aria-hidden
-                className="shrink-0 w-6 h-6 rounded-full bg-primary-active text-on-primary text-xs font-bold flex items-center justify-center mt-0.5"
-              >
-                {i + 1}
-              </span>
-              <div>
-                <p className="text-sm font-medium text-ink">{step.title}</p>
-                <p className="text-sm text-body leading-relaxed">{step.detail}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
       </div>
-    </section>
+    </div>
   );
 }

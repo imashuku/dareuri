@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import Hero from '../Hero';
+import ManualGuide from '../ManualGuide';
 import { isAmazonUrl } from '@/lib/categoryGuess';
 
-describe('Hero URL input', () => {
+describe('ManualGuide URL input', () => {
   const html = renderToStaticMarkup(
-    <Hero url="" onUrlChange={() => {}} onShowGuide={() => {}} />,
+    <ManualGuide url="" onUrlChange={() => {}} categoryRisk={null} />,
   );
 
   it('does not rely on browser URL validation (type="text")', () => {
@@ -19,6 +19,10 @@ describe('Hero URL input', () => {
     expect(html).toContain('inputMode="url"');
     expect(html).toContain('autoCapitalize="none"');
     expect(html).toContain('spellCheck="false"');
+  });
+
+  it('tells the direct-sale case it is done without the tool', () => {
+    expect(html).toContain('このツールでのチェックは不要です');
   });
 });
 

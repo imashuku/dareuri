@@ -11,11 +11,9 @@ import type { CategoryRisk, CheckRequest, CheckResult } from "@/lib/types";
 
 export default function Home() {
   const [url, setUrl] = useState("");
-  const [showGuide, setShowGuide] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CheckResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const guideRef = useRef<HTMLDivElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
 
   // The product URL stays in the browser — used only to guess the category.
@@ -68,25 +66,7 @@ export default function Home() {
   return (
     <div className="flex flex-col flex-1">
       <main className="flex-1 w-full">
-        <Hero
-          url={url}
-          onUrlChange={setUrl}
-          onShowGuide={() => {
-            setShowGuide(true);
-            requestAnimationFrame(() =>
-              guideRef.current?.scrollIntoView({
-                behavior: scrollBehavior(),
-                block: "start",
-              }),
-            );
-          }}
-        />
-
-        {showGuide && (
-          <div ref={guideRef}>
-            <ManualGuide categoryRisk={categoryRisk} />
-          </div>
-        )}
+        <Hero />
 
         <SellerTextForm
           loading={loading}
@@ -97,6 +77,31 @@ export default function Home() {
             setError(null);
           }}
         />
+
+        <section className="px-5 mb-10">
+          <details className="max-w-xl mx-auto group">
+            <summary className="cursor-pointer list-none flex items-center gap-2 text-sm font-medium text-primary-active hover:text-ink transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-active rounded">
+              <svg
+                aria-hidden
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-4 h-4 transition-transform group-open:rotate-90"
+              >
+                <path d="M9 5l7 7-7 7" />
+              </svg>
+              販売元情報の見つけ方を見る
+            </summary>
+            <ManualGuide
+              url={url}
+              onUrlChange={setUrl}
+              categoryRisk={categoryRisk}
+            />
+          </details>
+        </section>
 
         {error && (
           <p className="px-5 max-w-xl mx-auto text-sm text-level-high-fg mb-8">

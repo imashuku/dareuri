@@ -18,10 +18,14 @@ export default function SellerTextForm({
   const [text, setText] = useState("");
 
   return (
-    <section className="px-5 mb-10">
+    <section className="px-5 mb-6">
       <div className="max-w-xl mx-auto">
-        <label htmlFor="seller-text" className="block font-display text-lg text-ink mb-2">
-          販売元情報を貼り付けてください
+        <h2 className="font-display text-xl text-ink text-center mb-4">
+          <span className="inline-block">その商品、</span>
+          <span className="inline-block">ダレが売ってる？</span>
+        </h2>
+        <label htmlFor="seller-text" className="block text-sm font-medium text-ink mb-2">
+          Amazonの販売元情報を貼り付けてください
         </label>
         <textarea
           id="seller-text"
