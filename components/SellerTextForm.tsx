@@ -20,7 +20,7 @@ export default function SellerTextForm({
   return (
     <section className="px-5 mb-6">
       <div className="max-w-xl mx-auto">
-        <h2 className="font-display text-xl text-ink text-center mb-4">
+        <h2 className="font-bold text-xl text-ink text-center mb-4">
           <span className="inline-block">その商品、</span>
           <span className="inline-block">ダレが売ってる？</span>
         </h2>

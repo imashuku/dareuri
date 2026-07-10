@@ -198,8 +198,9 @@ const notoSansJP = Noto_Sans_JP({
   preload: false,
 });
 
+// ロゴ「ポチマエ」専用。UI見出しには使わない（見出しはNoto Sans JP太字）
 const shipporiMincho = Shippori_Mincho({
-  weight: ["500", "700"],
+  weight: ["700"],
   variable: "--font-shippori-mincho",
   subsets: ["latin"],
   display: "swap",
@@ -351,7 +352,7 @@ export default function Home() {
 
       <footer className="bg-surface-dark text-on-dark-soft px-5 py-8">
         <div className="max-w-xl mx-auto space-y-3">
-          <p className="font-display text-on-dark">ポチマエ</p>
+          <p className="font-display font-bold text-on-dark">ポチマエ</p>
           <p className="text-xs leading-relaxed">
             本ツールは、Amazon上に表示される販売元情報を整理し、購入前の確認ポイントを示すものです。商品の真贋、品質、性能、販売者の信用度を断定するものではありません。最終的な購入判断は、販売元情報、レビュー、返品条件、Amazon上の表示内容を確認したうえで行ってください。
           </p>
@@ -422,6 +423,7 @@ export default function Home() {
   --color-level-low-fg: var(--level-low-fg);
   --color-level-low-border: var(--level-low-border);
   --font-sans: var(--font-noto-sans-jp), "Hiragino Kaku Gothic ProN", sans-serif;
+  /* font-display はロゴ「ポチマエ」専用。UI見出しには使わない */
   --font-display: var(--font-shippori-mincho), "Hiragino Mincho ProN", serif;
 }
 
@@ -1108,10 +1110,10 @@ export default function Hero() {
       <p className="text-xs font-bold tracking-[0.2em] text-primary-active mb-3">
         AMAZON 販売元チェック
       </p>
-      <h1 className="font-display text-4xl sm:text-5xl text-ink mb-4">
+      <h1 className="font-display font-bold text-4xl sm:text-5xl text-ink mb-4">
         ポチマエ
       </h1>
-      <p className="font-display text-xl sm:text-2xl text-ink mb-3">
+      <p className="font-bold text-lg sm:text-xl text-ink mb-3">
         <span className="inline-block">ポチる前に、</span>
         <span className="inline-block">販売元を3秒チェック。</span>
       </p>
@@ -1255,7 +1257,7 @@ export default function SellerTextForm({
   return (
     <section className="px-5 mb-6">
       <div className="max-w-xl mx-auto">
-        <h2 className="font-display text-xl text-ink text-center mb-4">
+        <h2 className="font-bold text-xl text-ink text-center mb-4">
           <span className="inline-block">その商品、</span>
           <span className="inline-block">ダレが売ってる？</span>
         </h2>
@@ -1391,7 +1393,7 @@ export default function ResultCard({ result }: Props) {
   return (
     <section className="px-5 mb-10" aria-live="polite">
       <div className="max-w-xl mx-auto bg-white border border-hairline rounded-xl p-6 sm:p-8">
-        <h2 className="font-display text-lg text-ink mb-4">販売元情報の整理結果</h2>
+        <h2 className="font-semibold text-lg text-ink mb-4">販売元情報の整理結果</h2>
 
         <div
           className={`flex items-center gap-3 border rounded-xl px-5 py-4 mb-6 ${signal.className}`}

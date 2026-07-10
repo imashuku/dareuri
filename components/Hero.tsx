@@ -4,10 +4,10 @@ export default function Hero() {
       <p className="text-xs font-bold tracking-[0.2em] text-primary-active mb-3">
         AMAZON 販売元チェック
       </p>
-      <h1 className="font-display text-4xl sm:text-5xl text-ink mb-4">
+      <h1 className="font-display font-bold text-4xl sm:text-5xl text-ink mb-4">
         ポチマエ
       </h1>
-      <p className="font-display text-xl sm:text-2xl text-ink mb-3">
+      <p className="font-bold text-lg sm:text-xl text-ink mb-3">
         <span className="inline-block">ポチる前に、</span>
         <span className="inline-block">販売元を3秒チェック。</span>
       </p>

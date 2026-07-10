@@ -10,8 +10,9 @@ const notoSansJP = Noto_Sans_JP({
   preload: false,
 });
 
+// ロゴ「ポチマエ」専用。UI見出しには使わない（見出しはNoto Sans JP太字）
 const shipporiMincho = Shippori_Mincho({
-  weight: ["500", "700"],
+  weight: ["700"],
   variable: "--font-shippori-mincho",
   subsets: ["latin"],
   display: "swap",

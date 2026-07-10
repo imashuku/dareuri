@@ -86,7 +86,7 @@ export default function ResultCard({ result }: Props) {
   return (
     <section className="px-5 mb-10" aria-live="polite">
       <div className="max-w-xl mx-auto bg-white border border-hairline rounded-xl p-6 sm:p-8">
-        <h2 className="font-display text-lg text-ink mb-4">販売元情報の整理結果</h2>
+        <h2 className="font-semibold text-lg text-ink mb-4">販売元情報の整理結果</h2>
 
         <div
           className={`flex items-center gap-3 border rounded-xl px-5 py-4 mb-6 ${signal.className}`}
