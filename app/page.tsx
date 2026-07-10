@@ -127,14 +127,20 @@ export default function Home() {
               categoryRisk={categoryRisk}
             />
           </details>
-          <p className="max-w-xl mx-auto mt-4">
+          <div className="max-w-xl mx-auto mt-4 flex flex-col gap-2">
             <Link
               href="/bookmarklet"
               className="text-sm font-medium text-primary-active hover:text-ink transition-colors"
             >
               ⚡ 貼り付け不要の1クリック版（ブックマークレット）はこちら
             </Link>
-          </p>
+            <Link
+              href="/shortcut"
+              className="text-sm font-medium text-primary-active hover:text-ink transition-colors"
+            >
+              📱 iPhoneの共有シートから使う（ショートカット）はこちら
+            </Link>
+          </div>
         </section>
 
         {error && (
