@@ -94,8 +94,13 @@ export default function Home() {
 
         <SellerTextForm
           loading={loading}
+          hasResult={result !== null}
           onCheck={handleCheck}
           onAmazonDirect={handleAmazonDirect}
+          onClear={() => {
+            setResult(null);
+            setError(null);
+          }}
         />
 
         {error && (

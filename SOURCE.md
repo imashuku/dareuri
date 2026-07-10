@@ -327,8 +327,13 @@ export default function Home() {
 
         <SellerTextForm
           loading={loading}
+          hasResult={result !== null}
           onCheck={handleCheck}
           onAmazonDirect={handleAmazonDirect}
+          onClear={() => {
+            setResult(null);
+            setError(null);
+          }}
         />
 
         {error && (
@@ -1259,11 +1264,19 @@ import { useState } from "react";
 
 type Props = {
   loading: boolean;
+  hasResult: boolean;
   onCheck: (sellerText: string) => void;
   onAmazonDirect: () => void;
+  onClear: () => void;
 };
 
-export default function SellerTextForm({ loading, onCheck, onAmazonDirect }: Props) {
+export default function SellerTextForm({
+  loading,
+  hasResult,
+  onCheck,
+  onAmazonDirect,
+  onClear,
+}: Props) {
   const [text, setText] = useState("");
 
   return (
@@ -1296,6 +1309,17 @@ export default function SellerTextForm({ loading, onCheck, onAmazonDirect }: Pro
             className="h-11 px-6 rounded-lg bg-white border border-hairline text-ink text-sm font-medium hover:bg-surface-soft transition-colors disabled:text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-active"
           >
             販売元はAmazon.co.jpでした
+          </button>
+          <button
+            type="button"
+            disabled={loading || (text.trim().length === 0 && !hasResult)}
+            onClick={() => {
+              setText("");
+              onClear();
+            }}
+            className="h-11 px-4 rounded-lg text-muted text-sm font-medium hover:text-ink hover:bg-surface-soft transition-colors disabled:text-muted/40 disabled:hover:bg-transparent sm:ml-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-active"
+          >
+            クリア
           </button>
         </div>
         <p className="text-xs text-muted/80 mt-2">
