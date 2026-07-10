@@ -4,8 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { SHORTCUT_JS } from "@/lib/shortcut";
 
+// 改名時に作り直したもの。旧リンク（8b66461b…）は pochimae.vercel.app を
+// 焼き込んだままなので、公開しない。
 const ICLOUD_LINK =
-  "https://www.icloud.com/shortcuts/8b66461b45054b7abfc03e2f3ea50058";
+  "https://www.icloud.com/shortcuts/b6d53bd038094c4a828c3c47be8785b5";
 
 // 実機（iOS 26）で確認した手順。アクションは3つだけ。
 // 「Webページの内容を取得」は不要（リッチテキストを返すため
