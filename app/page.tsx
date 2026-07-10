@@ -65,10 +65,6 @@ export default function Home() {
     });
   }
 
-  function handleAmazonDirect() {
-    void runCheck({ soldByAmazon: true, categoryRisk });
-  }
-
   return (
     <div className="flex flex-col flex-1">
       <main className="flex-1 w-full">
@@ -96,7 +92,6 @@ export default function Home() {
           loading={loading}
           hasResult={result !== null}
           onCheck={handleCheck}
-          onAmazonDirect={handleAmazonDirect}
           onClear={() => {
             setResult(null);
             setError(null);

@@ -298,10 +298,6 @@ export default function Home() {
     });
   }
 
-  function handleAmazonDirect() {
-    void runCheck({ soldByAmazon: true, categoryRisk });
-  }
-
   return (
     <div className="flex flex-col flex-1">
       <main className="flex-1 w-full">
@@ -329,7 +325,6 @@ export default function Home() {
           loading={loading}
           hasResult={result !== null}
           onCheck={handleCheck}
-          onAmazonDirect={handleAmazonDirect}
           onClear={() => {
             setResult(null);
             setError(null);
@@ -1185,7 +1180,7 @@ const STEPS = [
   {
     title: "商品ページの「販売元」を見る",
     detail:
-      "購入ボタンの近くに小さく表示されています。「販売元 Amazon.co.jp」なら直販です。",
+      "購入ボタンの近くに小さく表示されています。「販売元 Amazon.co.jp」ならAmazonの直販で、このツールでのチェックは不要です。ここで確認完了です。",
   },
   {
     title: "「出荷元」も確認する",
@@ -1266,7 +1261,6 @@ type Props = {
   loading: boolean;
   hasResult: boolean;
   onCheck: (sellerText: string) => void;
-  onAmazonDirect: () => void;
   onClear: () => void;
 };
 
@@ -1274,7 +1268,6 @@ export default function SellerTextForm({
   loading,
   hasResult,
   onCheck,
-  onAmazonDirect,
   onClear,
 }: Props) {
   const [text, setText] = useState("");
@@ -1301,14 +1294,6 @@ export default function SellerTextForm({
             className="h-11 px-6 rounded-lg bg-primary text-on-primary text-sm font-medium hover:bg-primary-active transition-colors disabled:bg-hairline disabled:text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-active"
           >
             {loading ? "チェック中…" : "この販売元情報をチェック"}
-          </button>
-          <button
-            type="button"
-            disabled={loading}
-            onClick={onAmazonDirect}
-            className="h-11 px-6 rounded-lg bg-white border border-hairline text-ink text-sm font-medium hover:bg-surface-soft transition-colors disabled:text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-active"
-          >
-            販売元はAmazon.co.jpでした
           </button>
           <button
             type="button"

@@ -6,7 +6,6 @@ type Props = {
   loading: boolean;
   hasResult: boolean;
   onCheck: (sellerText: string) => void;
-  onAmazonDirect: () => void;
   onClear: () => void;
 };
 
@@ -14,7 +13,6 @@ export default function SellerTextForm({
   loading,
   hasResult,
   onCheck,
-  onAmazonDirect,
   onClear,
 }: Props) {
   const [text, setText] = useState("");
@@ -41,14 +39,6 @@ export default function SellerTextForm({
             className="h-11 px-6 rounded-lg bg-primary text-on-primary text-sm font-medium hover:bg-primary-active transition-colors disabled:bg-hairline disabled:text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-active"
           >
             {loading ? "チェック中…" : "この販売元情報をチェック"}
-          </button>
-          <button
-            type="button"
-            disabled={loading}
-            onClick={onAmazonDirect}
-            className="h-11 px-6 rounded-lg bg-white border border-hairline text-ink text-sm font-medium hover:bg-surface-soft transition-colors disabled:text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-active"
-          >
-            販売元はAmazon.co.jpでした
           </button>
           <button
             type="button"
