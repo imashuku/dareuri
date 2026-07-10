@@ -28,18 +28,18 @@ export const FPS = 30;
 
 // TTSの実測尺（audio/timings.json）＋シーン間の余白0.35秒
 export const SCENES = [
-  { id: 1, sec: 5.67 },
-  { id: 2, sec: 10.55 },
-  { id: 3, sec: 5.99 },
+  { id: 1, sec: 5.83 },
+  { id: 2, sec: 10.95 },
+  { id: 3, sec: 5.43 },
   { id: 4, sec: 12.79 },
-  { id: 5, sec: 4.75 },
-  { id: 6, sec: 6.87 },
-  { id: 7, sec: 10.63 },
+  { id: 5, sec: 5.27 },
+  { id: 6, sec: 7.11 },
+  { id: 7, sec: 11.07 },
   { id: 8, sec: 9.39 },
-  { id: 9, sec: 5.63 },
-  { id: 10, sec: 6.83 },
-  { id: 11, sec: 8.51 },
-  { id: 12, sec: 4.79 },
+  { id: 9, sec: 5.87 },
+  { id: 10, sec: 7.59 },
+  { id: 11, sec: 8.19 },
+  { id: 12, sec: 5.03 },
 ] as const;
 
 export const TOTAL_FRAMES = Math.round(

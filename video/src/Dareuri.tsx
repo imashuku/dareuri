@@ -822,7 +822,7 @@ const S9: React.FC = () => {
   const ways = [
     { n: '01', t: '貼り付ける', s: 'ブラウザで3秒' },
     { n: '02', t: 'ブックマークレット', s: '商品ページで1クリック' },
-    { n: '03', t: 'iPhoneの共有シート', s: 'Safariから直接' },
+    { n: '03', t: 'iPhoneのショートカット', s: 'Safariの共有ボタンから' },
   ];
   return (
     <Stage>
@@ -830,16 +830,31 @@ const S9: React.FC = () => {
         <Rise>
           <Title size={52}>使い方は、3つ。</Title>
         </Rise>
-        <div style={{ display: 'flex', gap: 28 }}>
+        {/* 3枚とも等高。見出しは1行に固定する（「ショートカ/ット」で割らせない） */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 430px)',
+            gap: 24,
+            alignItems: 'stretch',
+          }}
+        >
           {ways.map((w, i) => (
-            <Rise key={w.n} delay={10 + i * 12} distance={34}>
+            <Rise
+              key={w.n}
+              delay={10 + i * 12}
+              distance={34}
+              style={{ height: '100%' }}
+            >
               <div
                 style={{
-                  width: 400,
+                  height: '100%',
+                  boxSizing: 'border-box',
                   padding: '40px 34px',
                   borderRadius: 18,
                   background: T.surfaceCard,
                   display: 'grid',
+                  gridTemplateRows: 'auto auto 1fr',
                   gap: 12,
                 }}
               >
@@ -857,10 +872,11 @@ const S9: React.FC = () => {
                 <div
                   style={{
                     fontFamily: FONT_SANS,
-                    fontSize: 34,
+                    fontSize: 32,
                     fontWeight: 700,
                     color: T.ink,
                     lineHeight: 1.35,
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   {w.t}

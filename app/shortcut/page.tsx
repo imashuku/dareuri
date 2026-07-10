@@ -61,12 +61,15 @@ export default function ShortcutPage() {
             DAREURI FOR IPHONE
           </p>
           <h1 className="font-bold text-2xl text-ink mb-3">
-            <span className="inline-block">Safariの共有シートから、</span>
+            <span className="inline-block">Safariの共有ボタンから、</span>
             <span className="inline-block">販売元チェック。</span>
           </h1>
-          <p className="text-sm text-body leading-relaxed mb-8">
-            <span className="inline-block">iPhoneのSafariでAmazonの販売元プロフィールを開き、</span>
-            <span className="inline-block">共有ボタンから「ダレウリでチェック」を選ぶだけ。</span>
+          {/* 375px幅で「開/き、」と割れるため、意味の切れ目でinline-blockに分ける */}
+          <p className="text-sm text-body leading-relaxed mb-8 [word-break:auto-phrase]">
+            <span className="inline-block">iPhoneのSafariで</span>
+            <span className="inline-block">Amazonの販売元プロフィールを開き、</span>
+            <span className="inline-block">共有ボタンから</span>
+            <span className="inline-block">「ダレウリでチェック」を選ぶだけ。</span>
             <span className="inline-block">貼り付け作業は不要です。</span>
           </p>
 

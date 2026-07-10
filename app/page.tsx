@@ -138,7 +138,7 @@ export default function Home() {
               href="/shortcut"
               className="text-sm font-medium text-primary-active hover:text-ink transition-colors"
             >
-              📱 iPhoneの共有シートから使う（ショートカット）はこちら
+              📱 iPhoneのショートカットで使う（Safariの共有ボタンから）はこちら
             </Link>
           </div>
         </section>
