@@ -4,44 +4,51 @@ import { useState } from "react";
 import Link from "next/link";
 import { SHORTCUT_JS } from "@/lib/shortcut";
 
+const ICLOUD_LINK =
+  "https://www.icloud.com/shortcuts/8b66461b45054b7abfc03e2f3ea50058";
+
+// 実機（iOS 26）で確認した手順。アクションは3つだけ。
+// 「Webページの内容を取得」は不要（リッチテキストを返すため
+// 「JavaScriptを実行」に渡すと型が合わずエラーになる）。
 const STEPS = [
   {
     title: "「ショートカット」アプリで新規ショートカットを作る",
     detail: "右上の＋を押して、新しいショートカットを作成します。",
   },
   {
-    title: "共有シートに表示する設定にする",
-    detail:
-      "情報（ⓘ）ボタン →「共有シートに表示」をオン。「受け取るデータの種類」は「Safari Webページ」だけを残します。",
-  },
-  {
-    title: "「Webページの内容を取得」を追加",
-    detail: "アクションを検索して追加します。入力は「ショートカットの入力」です。",
-  },
-  {
     title: "「Webページ上でJavaScriptを実行」を追加",
     detail:
-      "下のコードをコピーして貼り付けます。（Safariの共有シートから実行するときだけ使えるアクションです）",
+      "下部の検索欄で「JavaScript」と検索して追加します。「スクリプティングアクションが無効です」と出たら、その場の「設定を開く」から許可してください。",
+  },
+  {
+    title: "下部の ⓘ ボタンから「共有シートに表示」をオン",
+    detail:
+      "画面下部中央の ⓘ をタップし、「共有シートに表示」をオンにします。これでワークフローの先頭に「共有シートから受け取る」の行が追加されます。",
+  },
+  {
+    title: "コードを貼り付け、入力に「ショートカットの入力」を指定",
+    detail:
+      "サンプルコードを全部消して、下のコードを貼り付けます。「◯◯ に対してJavaScriptを実行」の◯◯部分をタップし、変数「ショートカットの入力」を選びます。",
   },
   {
     title: "「URLを開く」を追加",
     detail:
-      "URL欄に下のテキストを貼り付け、末尾の変数部分に「JavaScriptの実行結果」を差し込みます（URLエンコードして渡してください）。",
+      "検索欄で「URLを開く」を追加し、URL欄に変数「JavaScriptの結果」を入れます。コード側で完成URLを組み立てるので、URLの直接入力は不要です。",
   },
   {
-    title: "名前を「ポチマエでチェック」にして保存",
+    title: "名前を「ポチマエでチェック」にして完了",
     detail:
-      "Safariで販売元プロフィールを開き、共有 →「ポチマエでチェック」で判定結果が開きます。",
+      "アクションは全部で3つ（共有シートから受け取る／JavaScriptを実行／JavaScriptの結果を開く）になります。",
   },
 ];
 
 export default function ShortcutPage() {
-  const [copied, setCopied] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  async function copy(text: string, key: string) {
-    await navigator.clipboard.writeText(text);
-    setCopied(key);
-    setTimeout(() => setCopied(null), 2000);
+  async function copyCode() {
+    await navigator.clipboard.writeText(SHORTCUT_JS);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   return (
@@ -61,75 +68,99 @@ export default function ShortcutPage() {
             <span className="inline-block">貼り付け作業は不要です。</span>
           </p>
 
-          <div className="bg-level-medium-bg text-level-medium-fg border border-level-medium-border/40 rounded-xl px-5 py-4 mb-8">
-            <p className="text-sm leading-relaxed">
-              <strong>おすすめの使いどころ</strong>
-              <br />
-              商品ページではなく、<strong>販売元プロフィール</strong>（「特定商取引法に基づく表記」が載っているページ）を開いた状態で実行してください。所在地・運営責任者まで読み取れます。
-            </p>
-          </div>
-
           <div className="bg-surface-card rounded-xl p-6 sm:p-8 mb-6">
-            <h2 className="font-bold text-lg text-ink mb-5">作り方</h2>
-            <ol className="space-y-4">
-              {STEPS.map((step, i) => (
-                <li key={step.title} className="flex gap-3">
-                  <span
-                    aria-hidden
-                    className="shrink-0 w-6 h-6 rounded-full bg-primary-active text-on-primary text-xs font-bold flex items-center justify-center mt-0.5"
-                  >
-                    {i + 1}
-                  </span>
-                  <div>
-                    <p className="text-sm font-medium text-ink">{step.title}</p>
-                    <p className="text-sm text-body leading-relaxed">
-                      {step.detail}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </div>
-
-          <div className="border border-hairline rounded-xl p-6 mb-6">
-            <h3 className="text-sm font-medium text-ink mb-2">
-              手順4に貼り付けるコード
-            </h3>
-            <button
-              type="button"
-              onClick={() => copy(SHORTCUT_JS, "js")}
-              className="h-11 px-6 rounded-lg bg-primary text-on-primary text-sm font-medium hover:bg-primary-active transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-active"
-            >
-              {copied === "js" ? "コピーしました ✓" : "コードをコピー"}
-            </button>
-            <textarea
-              readOnly
-              value={SHORTCUT_JS}
-              rows={6}
-              aria-label="ショートカットに貼り付けるJavaScript"
-              onFocus={(e) => e.target.select()}
-              className="w-full mt-4 rounded-lg border border-hairline bg-white text-muted text-xs p-3 font-mono"
-            />
-          </div>
-
-          <div className="border border-hairline rounded-xl p-6 mb-8">
-            <h3 className="text-sm font-medium text-ink mb-2">
-              手順5に貼り付けるURL
-            </h3>
-            <p className="text-xs text-muted leading-relaxed mb-3">
-              下のURLを貼り付けたあと、末尾に「JavaScriptの実行結果」の変数を差し込みます。
+            <h2 className="font-bold text-lg text-ink mb-3">
+              かんたん導入（推奨）
+            </h2>
+            <p className="text-sm text-body leading-relaxed mb-5">
+              iPhoneでこのボタンを押すと、ショートカットアプリが開きます。内容を確認して「ショートカットを追加」を押せば導入完了です。
             </p>
-            <button
-              type="button"
-              onClick={() => copy("https://pochimae.vercel.app/#s=", "url")}
-              className="h-11 px-6 rounded-lg bg-primary text-on-primary text-sm font-medium hover:bg-primary-active transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-active"
+            <a
+              href={ICLOUD_LINK}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center h-11 px-6 rounded-lg bg-primary text-on-primary text-sm font-medium hover:bg-primary-active transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-active"
             >
-              {copied === "url" ? "コピーしました ✓" : "URLをコピー"}
-            </button>
-            <p className="mt-3 text-xs font-mono text-muted break-all">
-              https://pochimae.vercel.app/#s=［JavaScriptの実行結果］
+              ショートカットを追加する
+            </a>
+            <p className="text-xs text-muted mt-3 leading-relaxed">
+              iCloud経由で配布しています。初回実行時に「Safariの項目を共有することを許可しますか？」と聞かれるので「常に許可」を選ぶと、次回から確認なしで使えます。
             </p>
           </div>
+
+          <div className="bg-level-medium-bg text-level-medium-fg border border-level-medium-border/40 rounded-xl px-5 py-4 mb-10">
+            <p className="text-sm leading-relaxed">
+              <strong>使いどころ</strong>
+              <br />
+              商品ページではなく、<strong>販売元プロフィール</strong>を開いた状態で実行してください。商品ページの「この商品は、○○が販売し…」の
+              <strong>○○（販売元の名前）をタップ</strong>すると開きます。所在地・運営責任者まで読み取れます。
+            </p>
+          </div>
+
+          <details className="group mb-8">
+            <summary className="cursor-pointer list-none flex items-center gap-2 text-sm font-medium text-primary-active hover:text-ink transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-active rounded">
+              <svg
+                aria-hidden
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-4 h-4 transition-transform group-open:rotate-90"
+              >
+                <path d="M9 5l7 7-7 7" />
+              </svg>
+              自分で作りたい場合の手順を見る
+            </summary>
+
+            <div className="bg-surface-card rounded-xl p-6 sm:p-8 mt-3">
+              <p className="text-xs text-muted mb-5">
+                iOS 26の実機で確認した手順です。アクションは全部で3つだけです。
+              </p>
+              <ol className="space-y-4 mb-6">
+                {STEPS.map((step, i) => (
+                  <li key={step.title} className="flex gap-3">
+                    <span
+                      aria-hidden
+                      className="shrink-0 w-6 h-6 rounded-full bg-primary-active text-on-primary text-xs font-bold flex items-center justify-center mt-0.5"
+                    >
+                      {i + 1}
+                    </span>
+                    <div>
+                      <p className="text-sm font-medium text-ink">
+                        {step.title}
+                      </p>
+                      <p className="text-sm text-body leading-relaxed">
+                        {step.detail}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+
+              <div className="border-t border-hairline pt-5">
+                <h3 className="text-sm font-medium text-ink mb-3">
+                  手順4に貼り付けるコード
+                </h3>
+                <button
+                  type="button"
+                  onClick={copyCode}
+                  className="h-11 px-6 rounded-lg bg-primary text-on-primary text-sm font-medium hover:bg-primary-active transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-active"
+                >
+                  {copied ? "コピーしました ✓" : "コードをコピー"}
+                </button>
+                <textarea
+                  readOnly
+                  value={SHORTCUT_JS}
+                  rows={6}
+                  aria-label="ショートカットに貼り付けるJavaScript"
+                  onFocus={(e) => e.target.select()}
+                  className="w-full mt-4 rounded-lg border border-hairline bg-white text-muted text-xs p-3 font-mono"
+                />
+              </div>
+            </div>
+          </details>
 
           <div className="border border-hairline rounded-xl p-5 mb-8">
             <h2 className="text-sm font-medium text-ink mb-2">プライバシー</h2>

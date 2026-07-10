@@ -1,14 +1,16 @@
 // iOS ショートカット用の抽出スクリプト。
 // Safari の共有シート →「Webページ上でJavaScriptを実行」で走る。
-// 商品ページからでもセラープロフィールページからでも動くよう、
-// 両方のセレクタを試す。fetch は使わない（ショートカットのJSは
-// 非同期完了を待てないため）。結果は completion() で返す。
+// 入力は「ショートカットの入力」を直接つなぐ。「Webページの内容を
+// 取得」を挟むとリッチテキストになり型が合わずエラーになる（実機確認）。
+//
+// fetch は使わない（ショートカットのJSは非同期完了を待てないため）。
+// URLエンコードまで済ませた完成URLを completion() で返し、「URLを開く」
+// にそのまま渡す。こうしないと日本語・改行でURLが壊れる。
 //
 // 商品ページで実行した場合はセラープロフィールを辿れないので、
 // 取れるのは出荷元・販売元まで（モバイルSafariでは商品名要素も
 // 出ないことがある）。特商法ブロックまで欲しい場合は、Safari で
-// 販売元プロフィールを開いてから実行する。導入ページではその手順を
-// 推奨導線として案内している。実ページでの検証済み。
+// 販売元プロフィールを開いてから実行する。実機で動作確認済み。
 
 export const SHORTCUT_JS = `const q = (s) => document.querySelector(s);
 const t = (e) => (e ? e.innerText.trim() : "");
@@ -31,4 +33,10 @@ const sec =
   q("#page-section-detail-seller-info") || q("#seller-profile-container");
 if (sec) p.push(t(sec));
 
-completion(p.join("\\n").slice(0, 9000));`;
+const text = p.join("\\n").slice(0, 9000);
+completion(
+  "https://pochimae.vercel.app/#s=" +
+    encodeURIComponent(text) +
+    "&u=" +
+    encodeURIComponent(location.origin + location.pathname)
+);`;

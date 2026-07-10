@@ -93,27 +93,26 @@ components/                   Hero / ManualGuide / SellerTextForm / ResultCard /
 - ✅ 検証: 実Amazon商品ページ（VASTDIGI/FBA海外セラー）でE2E確認 — 特商法・運営責任者・CN住所まで取得し🔴判定、電話番号はマスク。
 - 残タスク: 直販・国内セラーの商品ページでの実地確認（パターン追加）。
 
-## Phase 2-3: iPhone共有シート ★★★★★（審査不要 — Chrome拡張より前倒し推奨）
+## Phase 2-3: iPhone共有シート ★★★★★（✅ 完了 2026-07-10）
 
-- Appleショートカット1本: Safari共有シートでURLを受け取り→ポチマエを開く（まずはURL渡し＋確認手順ガイド表示で成立）。
-- iCloudリンクで配布し、サイトに導入ボタンを設置。
-- ※順番変更の理由: Chrome拡張はWebストア審査のリードタイム（数日〜）があるため、**拡張は早めに審査提出だけ済ませ、待ち時間にiOS対応を完了**させるのが効率的。
+- ✅ Safari共有シート →「Webページの内容を取得」+「JavaScriptを実行」で販売元情報を抽出 → `#s=` でポチマエを開き自動判定（`lib/shortcut.ts`）。
+- ✅ 導入ページ `/shortcut`（作り方6ステップ＋コード/URLのコピーボタン）。トップからリンク。
+- ✅ 実ページ検証: 商品ページ・セラープロフィール両方で抽出成功、プロフィールから🔴判定・電話番号マスクを確認。
+- 残: 実機iPhoneでの動作確認（Playwrightでの検証は済）。iCloud共有リンクでの配布（本人が作成→リンクをページに追加）。
 
-## Phase 2-2: Chrome拡張 ★★★★★（本命・審査あり）
+## Phase 2-2: Chrome拡張 ★★★★★（実装✅ 2026-07-10・審査提出待ち）
 
-- Manifest V3。商品ページで拡張アイコン→「販売元チェック」1クリック。
-- content scriptがDOMから販売元情報（必要ならセラープロフィールも）を取得し、ポチマエの判定を表示。
-- Chrome Webストア: デベロッパー登録（$5）→審査提出（数日〜2週間）。**実装完了次第すぐ提出**。
-- コードは本リポジトリ `extension/` で管理。
+- ✅ Manifest V3、`extension/`。ツールバー1クリック→販売元情報＋セラープロフィール特商法ブロックを収集→新規タブでポチマエ判定。
+- ✅ 権限は `activeTab`＋`scripting` のみ（ホスト権限・常駐スクリプトなし＝審査・プライバシー対応）。
+- ✅ E2E検証済み（実Amazonページ→🔴要確認・特商法取得・電話番号マスク）。提出用zip生成手順は `extension/README.md`。
+- ⏳ 残: Chromeデベロッパー登録（$5・ユーザー作業）→ Dashboard提出。掲載文言・権限説明はREADMEに準備済み。
 
-## Phase 2-4: ブランド検索 ★★★★☆（AIではなく公開データの合わせ技）
+## Phase 2-4: ブランド検索 ★★★★☆（設計完了 2026-07-10 → `docs/phase2-4-brand-check.md`）
 
-- 入力: ブランド名 →
-  1. Web検索: 公式サイトの実在
-  2. Wikipedia: ブランドの知名度・沿革
-  3. 商標: J-PlatPat検索リンクの自動生成（スクレイピングは規約上避ける）
-  4. **国税庁 法人番号システムAPI**（無料・公式）: 会社の実在確認
-- 結果は既存の確認レベルに加点・減点として統合。
+- 調査実測: **Wikipedia API は認証不要・CORS許可済みで即使える**（VASTDIGI=0件／キオクシア=168件と判別力を確認）。
+- **国税庁 法人番号API はアプリケーションID発行に1〜1.5か月** → 実装を待たず**今すぐ申請**する（無料・有効期限なし）。
+- 設計判断: ブランドの知名度は品質と無関係なので、**確認レベルの加点・減点には使わない**。「ブランドを調べる」独立セクションとして材料を並べる（消費者教育の筋に合う）。
+- 実装順: ①法人番号API申請（今日） ②Wikipedia＋J-PlatPat/法人番号検索リンクで `BrandCheck` を先行実装 ③ID到着後に登記照合を追加。
 
 ## 発信（Phase 2と並行）
 
@@ -164,23 +163,6 @@ components/                   Hero / ManualGuide / SellerTextForm / ResultCard /
     "vitest": "^4.1.10"
   }
 }
-```
-
-## `vitest.config.ts`
-
-```ts
-import path from 'node:path';
-import { defineConfig } from 'vitest/config';
-
-export default defineConfig({
-  resolve: {
-    alias: { '@': path.resolve(__dirname) },
-  },
-  test: {
-    environment: 'node',
-    include: ['**/__tests__/**/*.test.{ts,tsx}'],
-  },
-});
 ```
 
 ## `app/layout.tsx`
@@ -361,14 +343,20 @@ export default function Home() {
               categoryRisk={categoryRisk}
             />
           </details>
-          <p className="max-w-xl mx-auto mt-4">
+          <div className="max-w-xl mx-auto mt-4 flex flex-col gap-2">
             <Link
               href="/bookmarklet"
               className="text-sm font-medium text-primary-active hover:text-ink transition-colors"
             >
               ⚡ 貼り付け不要の1クリック版（ブックマークレット）はこちら
             </Link>
-          </p>
+            <Link
+              href="/shortcut"
+              className="text-sm font-medium text-primary-active hover:text-ink transition-colors"
+            >
+              📱 iPhoneの共有シートから使う（ショートカット）はこちら
+            </Link>
+          </div>
         </section>
 
         {error && (
@@ -389,6 +377,14 @@ export default function Home() {
           <p className="font-display font-bold text-on-dark">ポチマエ</p>
           <p className="text-xs leading-relaxed">
             本ツールは、Amazon上に表示される販売元情報を整理し、購入前の確認ポイントを示すものです。商品の真贋、品質、性能、販売者の信用度を断定するものではありません。最終的な購入判断は、販売元情報、レビュー、返品条件、Amazon上の表示内容を確認したうえで行ってください。
+          </p>
+          <p className="text-xs">
+            <Link
+              href="/privacy"
+              className="text-on-dark-soft hover:text-on-dark transition-colors underline underline-offset-2"
+            >
+              プライバシーポリシー
+            </Link>
           </p>
           <p className="text-xs">
             © {new Date().getFullYear()} ステップアウトマーケティング合同会社
@@ -485,6 +481,137 @@ button:not(:disabled) {
   html {
     scroll-behavior: auto;
   }
+}
+```
+
+## `app/privacy/page.tsx`
+
+```tsx
+import type { Metadata } from "next";
+import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "プライバシーポリシー｜ポチマエ",
+  description:
+    "ポチマエおよびChrome拡張機能「ポチマエ — Amazon販売元チェック」における個人情報・利用者情報の取り扱いについて。",
+};
+
+export default function PrivacyPage() {
+  return (
+    <div className="flex flex-col flex-1">
+      <main className="flex-1 w-full px-5 py-12">
+        <div className="max-w-xl mx-auto">
+          <p className="text-xs font-bold tracking-[0.2em] text-primary-active mb-3">
+            PRIVACY POLICY
+          </p>
+          <h1 className="font-bold text-2xl text-ink mb-2">
+            プライバシーポリシー
+          </h1>
+          <p className="text-sm text-muted mb-10">最終更新日: 2026年7月10日</p>
+
+          <div className="space-y-8 text-sm text-body leading-relaxed">
+            <section>
+              <p>
+                ステップアウトマーケティング合同会社（以下「当社」）は、当社が提供するウェブサービス「ポチマエ」（https://pochimae.vercel.app、以下「本サービス」）およびChrome拡張機能「ポチマエ
+                — Amazon販売元チェック」（以下「本拡張機能」）における利用者情報の取り扱いを、以下のとおり定めます。
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-bold text-lg text-ink mb-3">
+                1. 収集しない情報
+              </h2>
+              <p className="mb-3">
+                本サービスおよび本拡張機能は、利用者を個人として識別できる情報を収集しません。具体的には、以下のいずれも収集・保存・第三者提供を行いません。
+              </p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>氏名、メールアドレス、住所、電話番号などの個人情報</li>
+                <li>認証情報（ID・パスワード等）</li>
+                <li>閲覧履歴、検索履歴、位置情報</li>
+                <li>利用者を継続的に識別するための識別子</li>
+              </ul>
+              <p className="mt-3">
+                本サービスは利用登録を必要とせず、データベースを持ちません。本拡張機能は、ブラウザのストレージを一切使用しません。
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-bold text-lg text-ink mb-3">
+                2. 販売元情報の取り扱い
+              </h2>
+              <p className="mb-3">
+                本サービスは、利用者が入力・貼り付けた販売元情報（Amazonの商品ページおよび販売元プロフィールに公開されている事業者情報）を、確認レベルの判定のためにサーバー上で一時的に処理します。処理結果は返信後に破棄され、サーバーに保存されることはありません。
+              </p>
+              <p className="mb-3">
+                本拡張機能は、利用者がツールバーのアイコンをクリックした時点でのみ、表示中のAmazon商品ページから販売元情報を読み取ります。読み取った情報は本サービスをURLフラグメント（URLの「#」以降）で開くために使用します。URLフラグメントはブラウザの仕様上サーバーへ送信されないため、商品URLがサーバーのログに記録されることはありません。
+              </p>
+              <p>
+                貼り付けられたテキストに電話番号と推定される文字列が含まれる場合、判定処理の前にブラウザ内で自動的にマスクされ、サーバーに送信されません。
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-bold text-lg text-ink mb-3">
+                3. 外部サービスの利用
+              </h2>
+              <p>
+                本サービスは、判定結果に添える講評文の生成のためAnthropic社のClaude
+                APIを利用します。同APIには、国名・表記の種別・判定結果といった匿名化された特徴量のみを送信します。事業者名、個人名、住所、電話番号、商品URL、販売元の識別子を送信することはありません。
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-bold text-lg text-ink mb-3">
+                4. アクセス情報
+              </h2>
+              <p>
+                本サービスはホスティング事業者であるVercel
+                Inc.のインフラ上で提供されており、同社によりIPアドレス等のアクセスログが記録される場合があります。これらはサービスの安定運用および不正利用防止のために利用され、当社が個人の特定に用いることはありません。
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-bold text-lg text-ink mb-3">
+                5. Cookie等
+              </h2>
+              <p>
+                本サービスおよび本拡張機能は、広告配信・行動追跡を目的としたCookieやトラッキング技術を使用しません。
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-bold text-lg text-ink mb-3">
+                6. 本ポリシーの変更
+              </h2>
+              <p>
+                本ポリシーを変更する場合は、本ページに変更後の内容を掲載します。
+              </p>
+            </section>
+
+            <section>
+              <h2 className="font-bold text-lg text-ink mb-3">
+                7. お問い合わせ
+              </h2>
+              <p>
+                ステップアウトマーケティング合同会社
+                <br />
+                メール: hiroaki.imashuku@step-out.jp
+              </p>
+            </section>
+          </div>
+
+          <p className="mt-12">
+            <Link
+              href="/"
+              className="text-sm text-primary-active hover:text-ink transition-colors"
+            >
+              ← ポチマエに戻る
+            </Link>
+          </p>
+        </div>
+      </main>
+    </div>
+  );
 }
 ```
 
@@ -586,6 +713,193 @@ export default function BookmarkletPage() {
             <h2 className="text-sm font-medium text-ink mb-2">プライバシー</h2>
             <p className="text-xs text-muted leading-relaxed">
               集めた販売元情報はURLの「#」以降に載せて渡します。「#」以降はブラウザの仕様上サーバーへ送信されないため、商品URLや販売元情報がポチマエのサーバーログに残ることはありません。電話番号らしき文字列は、チェック前にブラウザ内で自動的にマスクされます。
+            </p>
+          </div>
+
+          <Link
+            href="/"
+            className="text-sm text-primary-active hover:text-ink transition-colors"
+          >
+            ← ポチマエに戻る
+          </Link>
+        </div>
+      </main>
+    </div>
+  );
+}
+```
+
+## `app/shortcut/page.tsx`
+
+```tsx
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { SHORTCUT_JS } from "@/lib/shortcut";
+
+const ICLOUD_LINK =
+  "https://www.icloud.com/shortcuts/8b66461b45054b7abfc03e2f3ea50058";
+
+// 実機（iOS 26）で確認した手順。アクションは3つだけ。
+// 「Webページの内容を取得」は不要（リッチテキストを返すため
+// 「JavaScriptを実行」に渡すと型が合わずエラーになる）。
+const STEPS = [
+  {
+    title: "「ショートカット」アプリで新規ショートカットを作る",
+    detail: "右上の＋を押して、新しいショートカットを作成します。",
+  },
+  {
+    title: "「Webページ上でJavaScriptを実行」を追加",
+    detail:
+      "下部の検索欄で「JavaScript」と検索して追加します。「スクリプティングアクションが無効です」と出たら、その場の「設定を開く」から許可してください。",
+  },
+  {
+    title: "下部の ⓘ ボタンから「共有シートに表示」をオン",
+    detail:
+      "画面下部中央の ⓘ をタップし、「共有シートに表示」をオンにします。これでワークフローの先頭に「共有シートから受け取る」の行が追加されます。",
+  },
+  {
+    title: "コードを貼り付け、入力に「ショートカットの入力」を指定",
+    detail:
+      "サンプルコードを全部消して、下のコードを貼り付けます。「◯◯ に対してJavaScriptを実行」の◯◯部分をタップし、変数「ショートカットの入力」を選びます。",
+  },
+  {
+    title: "「URLを開く」を追加",
+    detail:
+      "検索欄で「URLを開く」を追加し、URL欄に変数「JavaScriptの結果」を入れます。コード側で完成URLを組み立てるので、URLの直接入力は不要です。",
+  },
+  {
+    title: "名前を「ポチマエでチェック」にして完了",
+    detail:
+      "アクションは全部で3つ（共有シートから受け取る／JavaScriptを実行／JavaScriptの結果を開く）になります。",
+  },
+];
+
+export default function ShortcutPage() {
+  const [copied, setCopied] = useState(false);
+
+  async function copyCode() {
+    await navigator.clipboard.writeText(SHORTCUT_JS);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <div className="flex flex-col flex-1">
+      <main className="flex-1 w-full px-5 py-12">
+        <div className="max-w-xl mx-auto">
+          <p className="text-xs font-bold tracking-[0.2em] text-primary-active mb-3">
+            POCHIMAE FOR IPHONE
+          </p>
+          <h1 className="font-bold text-2xl text-ink mb-3">
+            <span className="inline-block">Safariの共有シートから、</span>
+            <span className="inline-block">販売元チェック。</span>
+          </h1>
+          <p className="text-sm text-body leading-relaxed mb-8">
+            <span className="inline-block">iPhoneのSafariでAmazonの販売元プロフィールを開き、</span>
+            <span className="inline-block">共有ボタンから「ポチマエでチェック」を選ぶだけ。</span>
+            <span className="inline-block">貼り付け作業は不要です。</span>
+          </p>
+
+          <div className="bg-surface-card rounded-xl p-6 sm:p-8 mb-6">
+            <h2 className="font-bold text-lg text-ink mb-3">
+              かんたん導入（推奨）
+            </h2>
+            <p className="text-sm text-body leading-relaxed mb-5">
+              iPhoneでこのボタンを押すと、ショートカットアプリが開きます。内容を確認して「ショートカットを追加」を押せば導入完了です。
+            </p>
+            <a
+              href={ICLOUD_LINK}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center h-11 px-6 rounded-lg bg-primary text-on-primary text-sm font-medium hover:bg-primary-active transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-active"
+            >
+              ショートカットを追加する
+            </a>
+            <p className="text-xs text-muted mt-3 leading-relaxed">
+              iCloud経由で配布しています。初回実行時に「Safariの項目を共有することを許可しますか？」と聞かれるので「常に許可」を選ぶと、次回から確認なしで使えます。
+            </p>
+          </div>
+
+          <div className="bg-level-medium-bg text-level-medium-fg border border-level-medium-border/40 rounded-xl px-5 py-4 mb-10">
+            <p className="text-sm leading-relaxed">
+              <strong>使いどころ</strong>
+              <br />
+              商品ページではなく、<strong>販売元プロフィール</strong>を開いた状態で実行してください。商品ページの「この商品は、○○が販売し…」の
+              <strong>○○（販売元の名前）をタップ</strong>すると開きます。所在地・運営責任者まで読み取れます。
+            </p>
+          </div>
+
+          <details className="group mb-8">
+            <summary className="cursor-pointer list-none flex items-center gap-2 text-sm font-medium text-primary-active hover:text-ink transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-active rounded">
+              <svg
+                aria-hidden
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-4 h-4 transition-transform group-open:rotate-90"
+              >
+                <path d="M9 5l7 7-7 7" />
+              </svg>
+              自分で作りたい場合の手順を見る
+            </summary>
+
+            <div className="bg-surface-card rounded-xl p-6 sm:p-8 mt-3">
+              <p className="text-xs text-muted mb-5">
+                iOS 26の実機で確認した手順です。アクションは全部で3つだけです。
+              </p>
+              <ol className="space-y-4 mb-6">
+                {STEPS.map((step, i) => (
+                  <li key={step.title} className="flex gap-3">
+                    <span
+                      aria-hidden
+                      className="shrink-0 w-6 h-6 rounded-full bg-primary-active text-on-primary text-xs font-bold flex items-center justify-center mt-0.5"
+                    >
+                      {i + 1}
+                    </span>
+                    <div>
+                      <p className="text-sm font-medium text-ink">
+                        {step.title}
+                      </p>
+                      <p className="text-sm text-body leading-relaxed">
+                        {step.detail}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+
+              <div className="border-t border-hairline pt-5">
+                <h3 className="text-sm font-medium text-ink mb-3">
+                  手順4に貼り付けるコード
+                </h3>
+                <button
+                  type="button"
+                  onClick={copyCode}
+                  className="h-11 px-6 rounded-lg bg-primary text-on-primary text-sm font-medium hover:bg-primary-active transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-active"
+                >
+                  {copied ? "コピーしました ✓" : "コードをコピー"}
+                </button>
+                <textarea
+                  readOnly
+                  value={SHORTCUT_JS}
+                  rows={6}
+                  aria-label="ショートカットに貼り付けるJavaScript"
+                  onFocus={(e) => e.target.select()}
+                  className="w-full mt-4 rounded-lg border border-hairline bg-white text-muted text-xs p-3 font-mono"
+                />
+              </div>
+            </div>
+          </details>
+
+          <div className="border border-hairline rounded-xl p-5 mb-8">
+            <h2 className="text-sm font-medium text-ink mb-2">プライバシー</h2>
+            <p className="text-xs text-muted leading-relaxed">
+              読み取った販売元情報はURLの「#」以降に載せて渡します。「#」以降はブラウザの仕様上サーバーへ送信されないため、販売元情報や商品URLがポチマエのサーバーログに残ることはありません。電話番号らしき文字列は、チェック前にブラウザ内で自動的にマスクされます。
             </p>
           </div>
 
@@ -829,6 +1143,53 @@ export const BOOKMARKLET_CODE =
   `if(!x){alert('Amazonの商品ページで実行してください');return}` +
   `open('${SITE_ORIGIN}/#s='+encodeURIComponent(x)+'&u='+encodeURIComponent(location.origin+location.pathname),'_blank')` +
   `}catch(e){alert('ポチマエ: 情報を取得できませんでした')}})()`;
+```
+
+## `lib/shortcut.ts`
+
+```ts
+// iOS ショートカット用の抽出スクリプト。
+// Safari の共有シート →「Webページ上でJavaScriptを実行」で走る。
+// 入力は「ショートカットの入力」を直接つなぐ。「Webページの内容を
+// 取得」を挟むとリッチテキストになり型が合わずエラーになる（実機確認）。
+//
+// fetch は使わない（ショートカットのJSは非同期完了を待てないため）。
+// URLエンコードまで済ませた完成URLを completion() で返し、「URLを開く」
+// にそのまま渡す。こうしないと日本語・改行でURLが壊れる。
+//
+// 商品ページで実行した場合はセラープロフィールを辿れないので、
+// 取れるのは出荷元・販売元まで（モバイルSafariでは商品名要素も
+// 出ないことがある）。特商法ブロックまで欲しい場合は、Safari で
+// 販売元プロフィールを開いてから実行する。実機で動作確認済み。
+
+export const SHORTCUT_JS = `const q = (s) => document.querySelector(s);
+const t = (e) => (e ? e.innerText.trim() : "");
+const p = [];
+
+// 商品ページ側
+const title = t(q("#productTitle"));
+if (title) p.push("商品名: " + title);
+const byline = t(q("#bylineInfo"));
+if (byline) p.push("ブランド表記: " + byline);
+const ful = t(q("#fulfillerInfoFeature_feature_div"));
+if (ful) p.push(ful);
+const merch = t(q("#merchantInfoFeature_feature_div"));
+if (merch) p.push(merch);
+const seller = q("#sellerProfileTriggerId");
+if (seller) p.push("販売元: " + seller.textContent.trim());
+
+// 販売元プロフィールページ側（特定商取引法に基づく表記）
+const sec =
+  q("#page-section-detail-seller-info") || q("#seller-profile-container");
+if (sec) p.push(t(sec));
+
+const text = p.join("\\n").slice(0, 9000);
+completion(
+  "https://pochimae.vercel.app/#s=" +
+    encodeURIComponent(text) +
+    "&u=" +
+    encodeURIComponent(location.origin + location.pathname)
+);`;
 ```
 
 ## `lib/parseSellerText.ts`
@@ -1702,284 +2063,142 @@ export default function Disclaimer() {
 }
 ```
 
-## `lib/__tests__/parseSellerText.test.ts`
+## `extension/manifest.json`
 
-```ts
-import { describe, expect, it } from 'vitest';
-import { guessCountry, parseSellerText } from '../parseSellerText';
-
-describe('guessCountry', () => {
-  it('classifies Japanese prefectures as JP', () => {
-    expect(guessCountry('東京都港区', '')).toBe('JP');
-    expect(guessCountry('大阪府大阪市', '')).toBe('JP');
-    expect(guessCountry('滋賀県東近江市', '')).toBe('JP');
-  });
-
-  it('never classifies prefecture-less Japanese addresses as CN', () => {
-    // 市/村 alone must not be treated as a China signal
-    expect(['JP', 'unknown']).toContain(guessCountry('横浜市中区', ''));
-    expect(['JP', 'unknown']).toContain(guessCountry('東近江市八日市', ''));
-    expect(['JP', 'unknown']).toContain(guessCountry('八王子市', ''));
-    expect(['JP', 'unknown']).toContain(guessCountry('〇〇村〇〇番地', ''));
-  });
-
-  it('classifies explicit Chinese addresses as CN', () => {
-    expect(guessCountry('江西省吉安市', '')).toBe('CN');
-    expect(guessCountry('深圳市, 广东省, CN', '')).toBe('CN');
-    expect(guessCountry('吉水县八都镇', '')).toBe('CN');
-  });
-
-  it('classifies explicit JP markers as JP', () => {
-    expect(guessCountry('中央区銀座1-2-3 Japan', '')).toBe('JP');
-  });
-
-  it('does not let a loose 日本 mention override CN evidence', () => {
-    expect(
-      guessCountry('吉水县八都镇坛上自然村10号 吉安市 江西 331600 CN 日本語対応可能', ''),
-    ).toBe('CN');
-    expect(guessCountry('中国 広東省深圳市 日本国内配送', '')).toBe('CN');
-    // 「日本語」だけでは JP の証拠にならない
-    expect(guessCountry('日本語対応スタッフ在籍', '')).toBe('unknown');
-  });
-
-  it('falls back to unknown when nothing matches', () => {
-    expect(guessCountry('somewhere', '')).toBe('unknown');
-  });
-});
-
-describe('parseSellerText country integration', () => {
-  it('does not misclassify a Japanese seller as CN', () => {
-    const parsed = parseSellerText(
-      '店舗名: 東京デジタル\n住所: 横浜市中区1-2-3\n運営責任者名: John Smith',
-    );
-    expect(parsed.countryGuess).not.toBe('CN');
-  });
-});
+```json
+{
+  "manifest_version": 3,
+  "name": "ポチマエ — Amazon販売元チェック",
+  "version": "0.1.0",
+  "description": "Amazonの商品ページで1クリック。販売元情報を自動で集めて、ポチマエの確認結果を開きます。",
+  "action": {
+    "default_title": "ポチマエでチェック",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["activeTab", "scripting"],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
 ```
 
-## `lib/__tests__/rules.test.ts`
+## `extension/background.js`
 
-```ts
-import { describe, expect, it } from 'vitest';
-import { parseSellerText } from '../parseSellerText';
-import { evaluate } from '../rules';
+```js
+// ポチマエ Chrome拡張 — service worker
+//
+// 設計:
+// - 常駐コンテンツスクリプトなし。ツールバーのボタンを押した瞬間だけ、
+//   activeTab 権限で現在のタブに収集関数を注入する
+// - 収集ロジックは lib/bookmarklet.ts と同一（実Amazonページで検証済み）
+// - 収集結果は URL フラグメント (#s=...&u=...) でポチマエに渡す。
+//   フラグメントはサーバーに送信されないため、販売元情報・商品URLが
+//   サーバーログに残ることはない
 
-function flagIds(text: string) {
-  const result = evaluate(parseSellerText(text));
-  return { ids: result.flags.map((f) => f.id), signal: result.signal };
+const SITE_ORIGIN = "https://pochimae.vercel.app";
+
+// タブ内で実行される収集関数。シリアライズされて注入されるため自己完結。
+async function collectFromPage(siteOrigin) {
+  try {
+    if (!/(^|\.)amazon\.(co\.jp|com)$/.test(location.hostname)) {
+      return { ok: false, message: "ポチマエ: Amazonの商品ページで押してください" };
+    }
+    const q = (s) => document.querySelector(s);
+    const t = (e) => (e ? e.innerText.trim() : "");
+    const p = [];
+    const title = t(q("#productTitle"));
+    if (title) p.push("商品名: " + title);
+    const byline = t(q("#bylineInfo"));
+    if (byline) p.push("ブランド表記: " + byline);
+    const ful = t(q("#fulfillerInfoFeature_feature_div"));
+    if (ful) p.push(ful);
+    const merch = t(q("#merchantInfoFeature_feature_div"));
+    if (merch) p.push(merch);
+    const a = q("#sellerProfileTriggerId");
+    if (a) p.push("販売元: " + a.textContent.trim());
+    if (a && a.getAttribute("href")) {
+      try {
+        const r = await fetch(new URL(a.getAttribute("href"), location.origin), {
+          credentials: "include",
+        });
+        const d = new DOMParser().parseFromString(await r.text(), "text/html");
+        const sec =
+          d.querySelector("#page-section-detail-seller-info") ||
+          d.querySelector("#seller-profile-container");
+        if (sec) p.push(sec.innerText.trim());
+      } catch (e) {
+        // セラーページ取得に失敗しても、商品ページ分だけでチェックできる
+      }
+    }
+    const text = p.join("\n").slice(0, 9000);
+    if (!text) {
+      return {
+        ok: false,
+        message:
+          "ポチマエ: 販売元情報が見つかりませんでした。商品ページで押してください",
+      };
+    }
+    return {
+      ok: true,
+      url:
+        siteOrigin +
+        "/#s=" +
+        encodeURIComponent(text) +
+        "&u=" +
+        encodeURIComponent(location.origin + location.pathname),
+    };
+  } catch (e) {
+    return { ok: false, message: "ポチマエ: 情報を取得できませんでした" };
+  }
 }
 
-describe('evaluate — split store-name flags', () => {
-  it('JA store name + latin operator + JP address: latin flag only, signal low', () => {
-    const { ids, signal } = flagIds(
-      '特定商取引法に基づく表記\n店舗名: 東京デジタル\n運営責任者名: John Smith\n住所: 東京都港区1-2-3',
-    );
-    expect(ids).toContain('japanese_store_name_with_latin_operator');
-    expect(ids).not.toContain('japanese_store_name_with_overseas_address');
-    expect(ids).not.toContain('seller_country_not_japan');
-    expect(signal).toBe('low');
-  });
-
-  it('JA store name + latin operator + CN address: both flags, signal high', () => {
-    const { ids, signal } = flagIds(
-      '特定商取引法に基づく表記\n店舗名: 毎日上向き\n運営責任者名: zhiping liu\n住所: 江西省吉安市',
-    );
-    expect(ids).toContain('japanese_store_name_with_latin_operator');
-    expect(ids).toContain('japanese_store_name_with_overseas_address');
-    expect(signal).toBe('high');
-  });
-
-  it('VASTDIGI-style full paste stays high', () => {
-    const { signal } = flagIds(
-      '出荷元 Amazon\n販売元 毎日上向き\n特定商取引法に基づく表記\n店舗名: 毎日上向き\n住所:\n吉水县\n八都镇坛上自然村10号\n吉安市\n江西\n331600\nCN\n運営責任者名: zhiping liu',
-    );
-    expect(signal).toBe('high');
-  });
-
-  it('info-poor paste gets insufficient_seller_info only, signal medium', () => {
-    const { ids, signal } = flagIds('なんだかよくわからないメモ書き');
-    expect(ids).toEqual(['insufficient_seller_info']);
-    expect(ids).not.toContain('no_tokushoho_like_info');
-    expect(signal).toBe('medium');
-  });
-
-  it('seller info present but statutory block missing gets tokushoho flag only', () => {
-    const { ids, signal } = flagIds('店舗名: 東京デジタル\n住所: 東京都港区1-2-3');
-    expect(ids).toContain('no_tokushoho_like_info');
-    expect(ids).not.toContain('insufficient_seller_info');
-    expect(signal).toBe('medium');
-  });
-
-  it('removed legacy flag id is gone', () => {
-    const { ids } = flagIds(
-      '店舗名: 毎日上向き\n運営責任者名: zhiping liu\n住所: 江西省吉安市',
-    );
-    expect(ids).not.toContain('japanese_store_name_but_overseas_operator');
-  });
-});
-```
-
-## `lib/__tests__/critique.test.ts`
-
-```ts
-import { describe, expect, it } from 'vitest';
-import { sanitizeCritique } from '../critique';
-
-describe('sanitizeCritique', () => {
-  it('returns a normal short critique as-is', () => {
-    const text =
-      '販売元の所在地が日本国外のため、返品や問い合わせの窓口を購入前に確認しておくとよさそうです。店舗名と責任者名の表記にも違いがあります。レビューや返品条件、販売元情報をもう一度確認したうえで判断してください。';
-    expect(sanitizeCritique(text)).toBe(text);
-  });
-
-  it('rejects output containing forbidden terms', () => {
-    expect(sanitizeCritique('この商品は偽物の可能性があります。')).toBeUndefined();
-    expect(sanitizeCritique('この販売元は安全です。')).toBeUndefined();
-    expect(sanitizeCritique('購入はSTOPしてください。')).toBeUndefined();
-  });
-
-  it('rejects output longer than 500 characters', () => {
-    expect(sanitizeCritique('あ'.repeat(501))).toBeUndefined();
-  });
-
-  it('rejects empty output', () => {
-    expect(sanitizeCritique('')).toBeUndefined();
-    expect(sanitizeCritique('   ')).toBeUndefined();
-  });
-
-  it('rejects code blocks and JSON-looking output', () => {
-    expect(sanitizeCritique('```json\n{"a":1}\n```')).toBeUndefined();
-    expect(sanitizeCritique('{"signal":"high"}')).toBeUndefined();
-    expect(sanitizeCritique('[{"signal":"high"}]')).toBeUndefined();
-  });
-});
-```
-
-## `lib/__tests__/prefill.test.ts`
-
-```ts
-import { describe, expect, it } from 'vitest';
-import { parsePrefillHash } from '../prefill';
-
-describe('parsePrefillHash', () => {
-  it('parses seller text and url from the fragment', () => {
-    const text = '店舗名: 毎日上向き\n住所: 江西省吉安市';
-    const url = 'https://www.amazon.co.jp/dp/B0H5HKHQSJ';
-    const hash = `#s=${encodeURIComponent(text)}&u=${encodeURIComponent(url)}`;
-    expect(parsePrefillHash(hash)).toEqual({ sellerText: text, url });
-  });
-
-  it('returns empty object for missing or empty hash', () => {
-    expect(parsePrefillHash('')).toEqual({});
-    expect(parsePrefillHash('#')).toEqual({});
-    expect(parsePrefillHash('#foo=bar')).toEqual({
-      sellerText: undefined,
-      url: undefined,
+async function runCheck(tab) {
+  if (!tab || !tab.id) return;
+  let result;
+  try {
+    const injected = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: collectFromPage,
+      args: [SITE_ORIGIN],
     });
-  });
+    result = injected && injected[0] ? injected[0].result : undefined;
+  } catch (e) {
+    // chrome:// 等、注入できないページでは何もしない
+    return;
+  }
+  if (result && result.ok) {
+    await chrome.tabs.create({ url: result.url, index: tab.index + 1 });
+  } else {
+    const message =
+      (result && result.message) || "ポチマエ: 情報を取得できませんでした";
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: (msg) => alert(msg),
+        args: [message],
+      });
+    } catch (e) {
+      // alertも出せないページなら諦める
+    }
+  }
+}
 
-  it('caps overly long seller text', () => {
-    const hash = `#s=${encodeURIComponent('あ'.repeat(20000))}`;
-    expect(parsePrefillHash(hash).sellerText?.length).toBe(10000);
-  });
-
-  it('works without the leading #', () => {
-    expect(parsePrefillHash('s=hello')).toEqual({
-      sellerText: 'hello',
-      url: undefined,
-    });
-  });
-});
-```
-
-## `components/__tests__/ResultCard.test.tsx`
-
-```tsx
-import { describe, expect, it } from 'vitest';
-import { renderToStaticMarkup } from 'react-dom/server';
-import ResultCard from '../ResultCard';
-import type { CheckResult } from '@/lib/types';
-
-const result: CheckResult = {
-  signal: 'medium',
-  flags: [],
-  facts: {
-    storeName: '毎日上向き',
-    shipsFrom: 'Amazon',
-    country: '中国',
-    operatorNameScript: 'ローマ字表記',
-    hasTokushoho: 'present',
-    hasPhoneLikeInfo: 'not_found',
-  },
-};
-
-describe('ResultCard labels', () => {
-  const html = renderToStaticMarkup(<ResultCard result={result} />);
-
-  it('labels the country as an estimate', () => {
-    expect(html).toContain('推定所在国');
-    expect(html).not.toContain('>所在国<');
-  });
-
-  it('scopes business-info and phone labels to the pasted text', () => {
-    expect(html).toContain('貼り付けテキスト内の事業者表示');
-    expect(html).toContain('貼り付けテキスト内の電話番号表示');
-  });
-
-  it('shows the estimation note', () => {
-    expect(html).toContain(
-      '表示内容は、貼り付けられたテキストから機械的に整理・推定した結果です。',
-    );
-  });
-
-  it('maps Presence values to あり/見当たらない', () => {
-    expect(html).toContain('あり');
-    expect(html).toContain('見当たらない');
-  });
-});
-```
-
-## `components/__tests__/ManualGuide.test.tsx`
-
-```tsx
-import { describe, expect, it } from 'vitest';
-import { renderToStaticMarkup } from 'react-dom/server';
-import ManualGuide from '../ManualGuide';
-import { isAmazonUrl } from '@/lib/categoryGuess';
-
-describe('ManualGuide URL input', () => {
-  const html = renderToStaticMarkup(
-    <ManualGuide url="" onUrlChange={() => {}} categoryRisk={null} />,
-  );
-
-  it('does not rely on browser URL validation (type="text")', () => {
-    // type="url" would block submitting protocol-less values like
-    // amazon.co.jp/dp/xxxx via native form validation.
-    expect(html).toContain('type="text"');
-    expect(html).not.toContain('type="url"');
-  });
-
-  it('keeps URL-friendly input attributes', () => {
-    expect(html).toContain('inputMode="url"');
-    expect(html).toContain('autoCapitalize="none"');
-    expect(html).toContain('spellCheck="false"');
-  });
-
-  it('tells the direct-sale case it is done without the tool', () => {
-    expect(html).toContain('このツールでのチェックは不要です');
-  });
+chrome.action.onClicked.addListener((tab) => {
+  runCheck(tab);
 });
 
-describe('isAmazonUrl accepts protocol-less Amazon URLs', () => {
-  it('recognizes amazon.co.jp/dp/xxxx without a scheme', () => {
-    expect(isAmazonUrl('amazon.co.jp/dp/B0H5HKHQSJ')).toBe(true);
-    expect(isAmazonUrl('www.amazon.co.jp/dp/B0H5HKHQSJ')).toBe(true);
-    expect(isAmazonUrl('https://www.amazon.co.jp/dp/B0H5HKHQSJ')).toBe(true);
-  });
-
-  it('rejects non-Amazon hosts', () => {
-    expect(isAmazonUrl('example.com/dp/B0H5HKHQSJ')).toBe(false);
-  });
-});
+// テストから同じ経路を叩けるように公開（本番動作には影響しない）
+self.__pochimaeRunCheck = runCheck;
 ```
 
