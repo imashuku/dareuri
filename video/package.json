@@ -30,7 +30,9 @@
     "upgrade": "remotion upgrade",
     "lint": "eslint src && tsc",
     "render": "remotion render DareuriHowTo out/dareuri-howto.mp4",
-    "render:short": "remotion render DareuriShort out/dareuri-short.mp4"
+    "render:short": "remotion render DareuriShort out/dareuri-short.mp4",
+    "render:short:square": "remotion render DareuriShortSquare out/dareuri-short-1x1.mp4",
+    "render:short:vertical": "remotion render DareuriShortVertical out/dareuri-short-9x16.mp4"
   },
   "sideEffects": [
     "*.css"

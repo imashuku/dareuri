@@ -15,7 +15,7 @@ export const RemotionRoot: React.FC = () => (
       width={1920}
       height={1080}
     />
-    {/* SNS用の30秒版。実演を中心に据えた別構成 */}
+    {/* SNS用の30秒版。同じ素材を3比率で出し分ける（レイアウトは比率で分岐） */}
     <Composition
       id="DareuriShort"
       component={DareuriShort}
@@ -23,6 +23,24 @@ export const RemotionRoot: React.FC = () => (
       fps={FPS}
       width={1920}
       height={1080}
+    />
+    {/* 1:1 タイムライン用 */}
+    <Composition
+      id="DareuriShortSquare"
+      component={DareuriShort}
+      durationInFrames={SHORT_TOTAL_FRAMES}
+      fps={FPS}
+      width={1080}
+      height={1080}
+    />
+    {/* 9:16 リール/ショート用 */}
+    <Composition
+      id="DareuriShortVertical"
+      component={DareuriShort}
+      durationInFrames={SHORT_TOTAL_FRAMES}
+      fps={FPS}
+      width={1080}
+      height={1920}
     />
   </>
 );
