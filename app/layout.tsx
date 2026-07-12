@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Noto_Sans_JP, Shippori_Mincho } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { BRAND_NAME, TAGLINE, SUB_COPY, SITE_ORIGIN } from "@/lib/brand";
 import "./globals.css";
 
@@ -52,7 +53,12 @@ export default function RootLayout({
       lang="ja"
       className={`${notoSansJP.variable} ${shipporiMincho.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        {/* Cookie不使用のアクセス計測。ダレウリのプライバシー方針と一致する。
+            数値は Vercel ダッシュボードの Analytics タブで見る。 */}
+        <Analytics />
+      </body>
     </html>
   );
 }
