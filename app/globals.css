@@ -95,3 +95,24 @@ button:not(:disabled) {
     font-size: max(16px, 1em) !important;
   }
 }
+
+/* iOS Safari's native date control lays out wider than its box and makes the
+   whole page horizontally pannable (pull left -> gutter on the right). Only
+   reproducible on real iOS Safari; desktop engines pass scrollWidth checks.
+   appearance:none makes it lay out like a text field. Scoped to touch devices
+   so desktop keeps its calendar affordance. */
+@media (hover: none) and (pointer: coarse) {
+  input[type="date"] {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+}
+
+/* Never let any overflowing element widen the page. clip (unlike hidden) does
+   not create a scroll container, so position:sticky keeps working. Cut-off
+   text is still caught by the CI mobile check (text-node rects, not
+   scrollWidth). */
+html,
+body {
+  overflow-x: clip;
+}
