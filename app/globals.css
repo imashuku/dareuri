@@ -81,3 +81,17 @@ button:not(:disabled) {
     scroll-behavior: auto;
   }
 }
+
+/* iOS Safari zooms the whole page when focusing an input/select/textarea whose
+   font-size is under 16px, and the zoom does not revert after typing — the page
+   is left wider than the screen. Floor the effective size at 16px on mobile no
+   matter what utility classes say. !important is the point of this guard:
+   without it any `text-sm` on the element would win. max(16px, 1em) keeps
+   anything already 16px+ unchanged, and desktop (768px+) is unaffected. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: max(16px, 1em) !important;
+  }
+}
