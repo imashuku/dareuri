@@ -48,3 +48,31 @@ describe('parseSellerText country integration', () => {
     expect(parsed.countryGuess).not.toBe('CN');
   });
 });
+
+describe('parseSellerText rating count', () => {
+  it('parses 評価: (1,234件)', () => {
+    const parsed = parseSellerText('評価: (1,234件)');
+    expect(parsed.ratingCount).toBe(1234);
+  });
+
+  it('parses 評価： （1,234件） with full-width punctuation', () => {
+    const parsed = parseSellerText('評価： （1,234件）');
+    expect(parsed.ratingCount).toBe(1234);
+  });
+
+  it('still parses the older (1,234件の評価) form', () => {
+    const parsed = parseSellerText('(1,234件の評価)');
+    expect(parsed.ratingCount).toBe(1234);
+  });
+
+  it('does not treat non-rating counts as ratingCount', () => {
+    const parsed = parseSellerText('在庫: 1,234件\n販売実績 5,678件');
+    expect(parsed.ratingCount).toBeUndefined();
+  });
+
+  it('parses a positive rating percent without inventing a count', () => {
+    const parsed = parseSellerText('過去12か月間で90%が肯定的');
+    expect(parsed.ratingPercent).toBe(90);
+    expect(parsed.ratingCount).toBeUndefined();
+  });
+});

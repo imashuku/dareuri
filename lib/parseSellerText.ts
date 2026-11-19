@@ -169,7 +169,9 @@ export function parseSellerText(
 
   // Seller rating, e.g. 「過去12か月間で90%が肯定的」「評価: (1,234件)」
   const percentMatch = text.match(/(\d{1,3})\s*[%％]\s*が?\s*(?:肯定的|高評価)/);
-  const countMatch = text.match(/[(（]?\s*([\d,]{1,10})\s*件?\s*の?評価/);
+  const countMatch =
+    text.match(/[(（]?\s*([\d,]{1,10})\s*件?\s*の?評価/) ??
+    text.match(/評価[:：]\s*[(（]\s*([\d,]{1,10})\s*件\s*[)）]/);
   const ratingPercent = percentMatch ? Number(percentMatch[1]) : undefined;
   const ratingCount = countMatch
     ? Number(countMatch[1].replace(/,/g, ''))
