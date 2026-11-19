@@ -19,7 +19,13 @@ export function parsePrefillHash(hash: string): PrefillData {
   } catch {
     return {};
   }
-  const sellerText = params.get('s')?.trim().slice(0, MAX_PREFILL_LENGTH);
+  const trimmedSellerText = params.get('s')?.trim();
+  let sellerTextEnd = MAX_PREFILL_LENGTH;
+  const boundary = trimmedSellerText?.slice(sellerTextEnd - 1, sellerTextEnd + 1);
+  if (boundary && /[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(boundary)) {
+    sellerTextEnd -= 1;
+  }
+  const sellerText = trimmedSellerText?.slice(0, sellerTextEnd);
   const url = params.get('u')?.trim();
   return {
     sellerText: sellerText || undefined,
