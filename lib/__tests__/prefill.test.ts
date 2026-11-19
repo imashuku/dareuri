@@ -23,6 +23,29 @@ describe('parsePrefillHash', () => {
     expect(parsePrefillHash(hash).sellerText?.length).toBe(10000);
   });
 
+  it('drops an emoji that straddles the seller text limit', () => {
+    const prefix = 'あ'.repeat(9999);
+    const hash = `#s=${encodeURIComponent(prefix + '😀')}`;
+    const { sellerText } = parsePrefillHash(hash);
+
+    expect(sellerText?.length).toBe(9999);
+    expect(sellerText).toBe(prefix);
+  });
+
+  it('keeps an emoji that fits exactly within the seller text limit', () => {
+    const text = 'あ'.repeat(9998) + '😀';
+    const hash = `#s=${encodeURIComponent(text)}`;
+    const { sellerText } = parsePrefillHash(hash);
+
+    expect(sellerText?.length).toBe(10000);
+    expect(sellerText).toBe(text);
+  });
+
+  it('caps overly long ASCII seller text at 10000 code units', () => {
+    const hash = `#s=${'a'.repeat(10001)}`;
+    expect(parsePrefillHash(hash).sellerText?.length).toBe(10000);
+  });
+
   it('works without the leading #', () => {
     expect(parsePrefillHash('s=hello')).toEqual({
       sellerText: 'hello',
