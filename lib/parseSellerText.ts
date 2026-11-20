@@ -171,7 +171,7 @@ export function parseSellerText(
   const percentMatch = text.match(/(\d{1,3})\s*[%％]\s*が?\s*(?:肯定的|高評価)/);
   const countMatch =
     text.match(/[(（]?\s*([\d,]{1,10})\s*件?\s*の?評価/) ??
-    text.match(/評価[:：]\s*[(（]\s*([\d,]{1,10})\s*件\s*[)）]/);
+    text.match(/(?:^|[^\S\r\n])評価[:：]\s*[(（]\s*([\d,]{1,10})\s*件\s*[)）]/m);
   const ratingPercent = percentMatch ? Number(percentMatch[1]) : undefined;
   const ratingCount = countMatch
     ? Number(countMatch[1].replace(/,/g, ''))
