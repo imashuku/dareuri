@@ -37,6 +37,7 @@ export default function SellerTextForm({
         </label>
         <textarea
           id="seller-text"
+          aria-describedby="seller-text-phone-mask-note"
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={7}
@@ -64,7 +65,7 @@ export default function SellerTextForm({
             クリア
           </button>
         </div>
-        <p className="text-xs text-muted/80 mt-2">
+        <p id="seller-text-phone-mask-note" className="text-xs text-muted/80 mt-2">
           電話番号らしき文字列は、送信前にブラウザ内で自動的にマスクされます。
         </p>
       </div>
